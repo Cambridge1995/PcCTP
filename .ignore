@@ -1,0 +1,10 @@
+plan.md
+Progress.md
+架构.md
+项目目标.md
+build/
+.claude/
+.idea/
+.pytest_cache/
+flows/
+__pycache__/
