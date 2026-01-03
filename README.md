@@ -26,7 +26,7 @@
 - [输出目录](#5. 输出目录)
 - [常见问题](#6. 常见问题)
 
-(注：目录因为序号与标题之间有空格，在github上无法正常显示和使用，若需要目录，请下载后，使用Typora阅读可正常跳转，若用其他markdown编辑器无法正常使用，将目录中框号中的空格删去试试。)
+(注：目录因为序号与标题之间有空格，在github上无法正常显示和使用，若需要目录，请下载后，使用Typora阅读使用 `Ctrl+左键` 可正常跳转，若用其他markdown编辑器无法正常使用，将目录中框号中的空格删去试试。)
 
 ------
 
@@ -148,9 +148,9 @@ PcCTP/
 from PcCTP import MdApi,PyMdSpi,TraderApi,PyTraderSpi
 ```
 
-### 2.2 测试用例
+### 2.3 测试用例
 
-#### 2.2.1 Terminal
+#### 2.3.1 Terminal
 
 直接使用 `simple_test.py` 进行测试：
 
@@ -159,7 +159,7 @@ from PcCTP import MdApi,PyMdSpi,TraderApi,PyTraderSpi
 python simple_test.py
 ```
 
-#### 2.2.2 IDE编辑器
+#### 2.3.2 IDE编辑器
 
 直接启动 `simple_test.py` 进行测试。
 
