@@ -2,7 +2,29 @@
 
 ## 目录
 
-[TOC]
+- [项目结构](#1.项目结构)
+- [快速开始](#2.快速开始，开箱即用)
+  - [下载方式](#2.1下载方式)
+    - [git命令](#2.1.1git命令)
+    - [ZIP](#2.1.2zip)
+    - [pip](#2.1.3pip命令)
+  - [使用方式](#2.2使用方式)
+  - [测试用例](#2.3测试用例)
+    - [Terminal](#2.3.1Terminal)
+    - [IDE编辑器](#2.3.2IDE编辑器)
+- [编译环境要求](#3.编译环境要求)
+  - [Windows](#3.1Windows 环境)
+  - [Linux](#3.2Linux 环境)
+- [编译](#4.编译)
+  - [一键编译（推荐）](#4.1一键编译（推荐）)
+  - [nanobind参数](#4.2--nanobind)
+  - [platfrom](#4.3--platform)
+    - [win64](#4.3.1win64)
+    - [win32](#4.3.2win32)
+    - [linux](#4.3.3linux)
+  - [更多选项](#4.4更多选项)
+- [输出目录](#5.输出目录)
+- [常见问题](#6.常见问题)
 
 ------
 
@@ -82,7 +104,7 @@ git clone https://github.com/Cambridge1995/PcCTP.git
 git clone git@github.com:Cambridge1995/PcCTP.git
 ```
 
-#### 2.1.2  zip
+#### 2.1.2 zip
 
 `github`：在项目页面点击 `<> code` 按钮，点击 `Download ZIP` 下载到本地。
 
