@@ -1,5 +1,10 @@
 from typing import Optional, Protocol
-from .types import DepthMarketData, ForQuoteRsp, MulticastInstrument, RspUserLogin, RspInfo, UserLogout
+from .types import (
+    DepthMarketData, ForQuoteRsp, MulticastInstrument, RspUserLogin, RspInfo, UserLogout,
+    # 交易API相关类型
+
+)
+
 
 class PyMdSpi(Protocol):
     """

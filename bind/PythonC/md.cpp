@@ -35,8 +35,8 @@
 #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #include <numpy/ndarrayobject.h>
 
-// 零拷贝优化工具库（纯 Python C API 版本）
-#include "zero_copy_utils.h"
+// 通用工具库（包含平台特定宏、编译期常量、字典设置函数等）
+#include "utils.h"
 
 // PC版 CTP 行情 API 头文件
 #if defined(_WIN64)
@@ -52,77 +52,6 @@
 #else
     #include "ctp/PC/linux/ThostFtdcMdApi.h"
 #endif
-
-// =============================================================================
-// 平台特定的强制内联宏定义
-// =============================================================================
-
-#if defined(_MSC_VER)
-    // MSVC: 使用 __forceinline 强制内联
-    #define FORCE_INLINE __forceinline
-    #define FORCE_INLINE_MEMBER __forceinline
-    #define MAYBE_INLINE __forceinline
-#elif defined(__GNUC__) || defined(__clang__)
-    // GCC/Clang: 使用 __attribute__((always_inline))
-    #define FORCE_INLINE __attribute__((always_inline)) inline
-    #define FORCE_INLINE_MEMBER __attribute__((always_inline)) inline
-    #define MAYBE_INLINE __attribute__((always_inline)) inline
-#else
-    // 其他编译器：使用 inline
-    #define FORCE_INLINE inline
-    #define FORCE_INLINE_MEMBER inline
-    #define MAYBE_INLINE inline
-#endif
-
-// =============================================================================
-// 编译期常量（constexpr）
-// =============================================================================
-
-// CTP 字符串字段的最大长度（编译期常量）
-constexpr size_t MAX_EXCHANGE_ID_LEN = 9;
-constexpr size_t MAX_DATE_LEN = 9;
-constexpr size_t MAX_TIME_LEN = 9;
-constexpr size_t MAX_INSTRUMENT_ID_LEN = 31;
-constexpr size_t MAX_BROKER_ID_LEN = 11;
-constexpr size_t MAX_USER_ID_LEN = 16;
-constexpr size_t MAX_PASSWORD_LEN = 41;
-constexpr size_t MAX_ERROR_MSG_LEN = 81;
-
-// =============================================================================
-// 内联优化的辅助函数
-// =============================================================================
-
-/**
- * @brief 编译期字符串长度计算（constexpr）
- */
-template<size_t N>
-constexpr size_t c_string_length(const char (&)[N]) {
-    return N - 1;
-}
-
-// 注意：safe_strlen、create_py_string 已移至 zero_copy_utils.h
-// create_py_long、create_py_double、create_py_none 在本文件中定义，以保持独立性
-
-/**
- * @brief 优化的 Python 整数创建（强制内联）
- */
-FORCE_INLINE PyObject* create_py_long(long value) {
-    return PyLong_FromLong(value);
-}
-
-/**
- * @brief 优化的 Python 浮点数创建（强制内联）
- */
-FORCE_INLINE PyObject* create_py_double(double value) {
-    return PyFloat_FromDouble(value);
-}
-
-/**
- * @brief 优化的 Python None 创建（内联，可能被优化为静态引用）
- */
-FORCE_INLINE PyObject* create_py_none() {
-    Py_RETURN_NONE;
-}
 
 // =============================================================================
 // 定义全局字符串池实例
@@ -145,84 +74,6 @@ typedef struct {
     CThostFtdcMdSpi* spi;   // CTP回调SPI指针
     PyObject* py_spi;       // Python回调对象
 } MdApiObject;
-
-// =============================================================================
-// 优化的字典设置辅助函数（强制内联）
-// =============================================================================
-
-/**
- * @brief 优化的字符串字段设置到字典（强制内联）
- */
-FORCE_INLINE void dict_set_string(PyObject* dict, const char* key, const char* value, size_t max_len) {
-    PyObject* str_obj = create_py_string(value, max_len);
-    if (str_obj) {
-        PyDict_SetItemString(dict, key, str_obj);
-        Py_DECREF(str_obj);
-    }
-}
-
-/**
- * @brief 使用字符串池的字符串字段设置（强制内联）
- */
-FORCE_INLINE void dict_set_pooled_string(PyObject* dict, const char* key, const char* value, size_t max_len, StringPool& pool) {
-    PyObject* str_obj = pool.intern(value, max_len);
-    if (str_obj) {
-        PyDict_SetItemString(dict, key, str_obj);
-        Py_DECREF(str_obj);
-    }
-}
-
-/**
- * @brief 优化的整数字段设置到字典（强制内联）
- */
-FORCE_INLINE void dict_set_long(PyObject* dict, const char* key, long value) {
-    PyObject* long_obj = create_py_long(value);
-    if (long_obj) {
-        PyDict_SetItemString(dict, key, long_obj);
-        Py_DECREF(long_obj);
-    }
-}
-
-/**
- * @brief 优化的浮点数字段设置到字典（强制内联）
- */
-FORCE_INLINE void dict_set_double(PyObject* dict, const char* key, double value) {
-    PyObject* double_obj = create_py_double(value);
-    if (double_obj) {
-        PyDict_SetItemString(dict, key, double_obj);
-        Py_DECREF(double_obj);
-    }
-}
-
-/**
- * @brief 设置 GBK 编码的字符串到字典（用于 CTP 错误消息）
- */
-FORCE_INLINE void dict_set_gbk_string(PyObject* dict, const char* key, const char* value, size_t max_len) {
-    if (!value || value[0] == '\0') {
-        PyDict_SetItemString(dict, key, Py_None);
-        return;
-    }
-
-    // 计算实际字符串长度
-    size_t len = strnlen(value, max_len);
-
-    // 使用 GBK 编码解码字符串
-    PyObject* str_obj = PyUnicode_Decode(value, len, "gbk", "ignore");
-    if (str_obj) {
-        PyDict_SetItemString(dict, key, str_obj);
-        Py_DECREF(str_obj);
-    } else {
-        // 如果 GBK 解码失败，回退到 UTF-8
-        str_obj = PyUnicode_Decode(value, len, "utf-8", "ignore");
-        if (str_obj) {
-            PyDict_SetItemString(dict, key, str_obj);
-            Py_DECREF(str_obj);
-        } else {
-            // 最后的回退：使用原始字节
-            PyDict_SetItemString(dict, key, Py_None);
-        }
-    }
-}
 
 // =============================================================================
 // SPI回调类实现 (使用下划线命名法 + 内联优化)
@@ -1522,7 +1373,7 @@ static PyModuleDef PcCTP_module = {
 };
 
 PyMODINIT_FUNC PyInit_PcCTP(void) {
-    if (initialize_zero_copy_utils() < 0) {
+    if (initialize_utils() < 0) {
         return NULL;
     }
 
