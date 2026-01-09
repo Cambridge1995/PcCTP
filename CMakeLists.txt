@@ -131,16 +131,16 @@ set(CTP_MODULE_NAME "PcCTP")
 
 # 源文件列表（行情接口 MdApi + 交易接口 TradeApi + FIX 采集库）
 set(PYTHONC_SOURCE_FILES
-    bind/PythonC/common.h
-    bind/PythonC/util.h
-    bind/PythonC/util.cpp
-    bind/PythonC/md.h
-    bind/PythonC/md_api.cpp
-    bind/PythonC/md_spi.cpp
-    bind/PythonC/trade.h
-    bind/PythonC/trade_api.cpp
-    bind/PythonC/trade_spi.cpp
-    bind/PythonC/fix.cpp
+    bind/common.h
+    bind/util.h
+    bind/util.cpp
+    bind/md.h
+    bind/md_api.cpp
+    bind/md_spi.cpp
+    bind/trade.h
+    bind/trade_api.cpp
+    bind/trade_spi.cpp
+    bind/fix.cpp
 )
 
 # 创建 Python 模块（使用 Python C API）
