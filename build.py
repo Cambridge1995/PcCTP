@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
 """
-PcCTP 跨平台构建脚本
+PcCTP 一键构建脚本
 
-支持命令行参数：
-  --platform     目标平台 (win64, win32, linux)，默认自动检测
-  --generator    CMake 生成器 (如 "Visual Studio 17 2022")
-  --nanobind     使用 nanobind 绑定层
-  --release      Release 模式编译
-  --debug        Debug 模式编译
-  --clean        清理构建目录后重新构建
+职责：
+1. 创建各级文件夹
+2. 协调 generate_init.py 进行 Python 文件生成和复制
+3. 调用 CMake 进行 C++ 编译
+4. 编译完成后，调用 generate_init.py 进行最后的整理
 
 使用示例：
   python build.py                    # 自动检测当前平台并编译
@@ -27,13 +25,14 @@ from pathlib import Path
 
 
 def get_current_platform():
-    """检测当前运行平台"""
+    """检测当前运行平台（只支持 win64 和 linux）"""
     system = platform.system()
     if system == "Windows":
-        # 检测是 32 位还是 64 位
-        is_64bit = platform.machine().endswith("64")
-        return "win64" if is_64bit else "win32"
+        # Windows 只支持 64 位
+        print(f"[调试] 检测到平台: win64")
+        return "win64"
     elif system == "Linux":
+        print(f"[调试] 检测到平台: linux")
         return "linux"
     else:
         return "unknown"
@@ -42,28 +41,26 @@ def get_current_platform():
 def validate_platform_environment(target_platform):
     """验证当前环境是否支持编译目标平台"""
     current_system = platform.system()
-    current_platform = get_current_platform()
 
     if target_platform == "linux":
         if current_system != "Linux":
             print(f"[错误] 编译 Linux 版本需要在 Linux 系统上进行")
             print(f"[提示] 当前系统: {current_system}")
             return False
-    elif target_platform in ["win32", "win64"]:
+    elif target_platform == "win64":
         if current_system != "Windows":
             print(f"[错误] 编译 Windows 版本需要在 Windows 系统上进行")
             print(f"[提示] 当前系统: {current_system}")
             return False
-        # 检查 Python 架构
-        if target_platform == "win32" and not platform.machine().endswith("64"):
-            # 32位系统上编译32位：OK
-            pass
-        elif target_platform == "win32" and platform.machine().endswith("64"):
-            # 64位系统上编译32位：需要特殊处理（CMake -A Win32）
-            print("[信息] 64位系统上编译32位版本，将使用 -A Win32 参数")
-        elif target_platform == "win64" and not platform.machine().endswith("64"):
-            print(f"[错误] 编译 64 位版本需要 64 位 Python 和编译器")
+        # 检查 Python 是否为 64 位
+        if sys.maxsize <= 2**32:
+            print(f"[错误] Windows 版本需要64位Python")
+            print(f"[提示] 当前Python是32位，请使用64位Python")
             return False
+    else:
+        print(f"[错误] 不支持的平台: {target_platform}")
+        print(f"[提示] 支持的平台: win64, linux")
+        return False
 
     return True
 
@@ -144,16 +141,121 @@ def get_cmake_generator(args):
         return "Unix Makefiles"
 
 
-def get_build_dir(target_platform):
-    """获取构建目录"""
-    return f"build/{target_platform}"
+def create_directories(target_platform):
+    """创建必要的目录结构"""
+    project_root = Path(__file__).parent
+    directories = [
+        project_root / "build" / target_platform,
+        project_root / "PcCTP" / "win64",
+        project_root / "PcCTP" / "linux",
+        project_root / "PcCTP" / "types",
+    ]
+
+    for directory in directories:
+        directory.mkdir(parents=True, exist_ok=True)
+        print(f"[创建] 目录: {directory.relative_to(project_root)}")
 
 
-def clean_build_dir(build_dir):
-    """清理构建目录"""
-    if os.path.exists(build_dir):
-        print(f"[清理] 删除构建目录: {build_dir}")
-        shutil.rmtree(build_dir)
+def run_generate_init(target_platform, stage="all"):
+    """运行 generate_init.py 脚本
+
+    Args:
+        target_platform: 目标平台 (win64, win32, linux)
+        stage: 执行阶段
+            - "prepare": 编译前准备（复制 src 文件，生成 __init__.py）
+            - "finalize": 编译后整理（更新 __init__.py）
+            - "all": 执行所有步骤
+    """
+    project_root = Path(__file__).parent
+    script_path = project_root / "scripts" / "generate_init.py"
+
+    cmd = [
+        sys.executable,
+        str(script_path),
+        "--platform", target_platform,
+        "--stage", stage
+    ]
+
+    print(f"[执行] generate_init.py (stage: {stage})...")
+    print(f"[命令] {' '.join(cmd)}")
+
+    result = subprocess.run(cmd)
+    if result.returncode != 0:
+        print(f"[错误] generate_init.py 执行失败 (stage: {stage})")
+        return False
+
+    return True
+
+
+def run_cmake_build(target_platform, build_type, generator):
+    """运行 CMake 配置和编译
+
+    Args:
+        target_platform: 目标平台 (win64, win32, linux)
+        build_type: 构建类型 (Release, Debug, RelWithDebInfo)
+        generator: CMake 生成器
+    """
+    build_dir = f"build/{target_platform}"
+
+    # 准备 CMake 配置命令
+    cmake_config_args = ["cmake", "-S", ".", "-B", build_dir]
+
+    # 添加构建类型
+    cmake_config_args.append(f"-DCMAKE_BUILD_TYPE={build_type}")
+
+    # 添加平台参数
+    cmake_config_args.append(f"-DCTP_PLATFORM={target_platform}")
+
+    # 使用 Python C API 绑定层
+    print("[配置] 使用 Python C API 绑定层")
+
+    # 添加生成器和架构参数（Windows）
+    if platform.system() == "Windows":
+        # 只有当生成器不为空时才添加 -G 参数
+        if generator:
+            cmake_config_args.extend(["-G", generator])
+            print(f"[配置] 使用生成器: {generator}")
+
+        # Windows只支持64位，指定x64架构
+        if target_platform == "win64":
+            cmake_config_args.extend(["-A", "x64"])
+            print("[配置] 目标架构: x64 (64位)")
+
+    # 配置 CMake
+    print(f"[步骤1] 配置 CMake (目标: {target_platform})...")
+    print(f"[命令] {' '.join(cmake_config_args)}")
+
+    result = subprocess.run(cmake_config_args)
+    if result.returncode != 0:
+        print("[错误] CMake 配置失败")
+        return False
+
+    # 构建命令
+    cmake_build_args = [
+        "cmake",
+        "--build", build_dir,
+        "--config", build_type,
+        "--",  # 分隔符，之后的参数传递给原生构建工具
+    ]
+
+    # 添加并行编译参数
+    if platform.system() == "Linux":
+        # Linux/Unix系统使用 -j 参数启用并行编译
+        import os
+        # 使用CPU核心数，最多4个并行作业
+        jobs = min(os.cpu_count() or 1, 4)
+        cmake_build_args.extend(["-j", str(jobs)])
+
+    # 构建
+    print(f"[步骤2] 编译项目 ({build_type}, {target_platform})...")
+    print(f"[命令] {' '.join(cmake_build_args)}")
+
+    result = subprocess.run(cmake_build_args)
+    if result.returncode != 0:
+        print("[错误] 编译失败")
+        return False
+
+    return True
 
 
 def setup_linux_symlinks():
@@ -200,24 +302,19 @@ def setup_linux_symlinks():
 
 def main():
     parser = argparse.ArgumentParser(
-        description="PcCTP 跨平台构建脚本",
+        description="PcCTP 一键构建脚本",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__
     )
     parser.add_argument(
         "--platform",
-        choices=["win64", "win32", "linux", "auto"],
+        choices=["win64", "linux", "auto"],
         default="auto",
         help="目标平台 (默认: auto - 自动检测当前平台)"
     )
     parser.add_argument(
         "--generator",
         help="CMake 生成器 (如 'Visual Studio 17 2022')"
-    )
-    parser.add_argument(
-        "--nanobind",
-        action="store_true",
-        help="使用 nanobind 绑定层（默认：Python C API）"
     )
     parser.add_argument(
         "--release",
@@ -252,77 +349,49 @@ def main():
     # 确定构建类型
     build_type = "Release" if args.release else ("Debug" if args.debug else "RelWithDebInfo")
 
-    # 获取构建目录
-    build_dir = get_build_dir(target_platform)
-
     # 清理构建目录（如果需要）
     if args.clean:
-        clean_build_dir(build_dir)
+        build_dir = Path("build") / target_platform
+        if build_dir.exists():
+            print(f"[清理] 删除构建目录: {build_dir}")
+            shutil.rmtree(build_dir)
 
     # Linux 平台：创建 CTP 库符号链接
     if target_platform == "linux":
         setup_linux_symlinks()
 
-    # 准备 CMake 配置命令
-    cmake_config_args = ["cmake", "-S", ".", "-B", build_dir]
+    # 获取 CMake 生成器
+    generator = get_cmake_generator(args)
 
-    # 添加构建类型
-    cmake_config_args.append(f"-DCMAKE_BUILD_TYPE={build_type}")
+    print("\n" + "=" * 60)
+    print("开始构建流程")
+    print("=" * 60)
 
-    # 添加绑定层选项
-    if args.nanobind:
-        cmake_config_args.append("-DUSE_NANOBIND=ON")
-        print("[配置] 使用 nanobind 绑定层")
-    else:
-        cmake_config_args.append("-DUSE_NANOBIND=OFF")
-        print("[配置] 使用 Python C API 绑定层")
+    # 步骤1: 创建目录结构
+    print("\n[步骤0] 创建目录结构...")
+    create_directories(target_platform)
 
-    # 添加生成器和架构参数（Windows）
-    if platform.system() == "Windows":
-        generator = get_cmake_generator(args)
-        # 只有当生成器不为空时才添加 -G 参数
-        if generator:
-            cmake_config_args.extend(["-G", generator])
-
-        # 指定目标架构
-        if target_platform == "win32":
-            cmake_config_args.extend(["-A", "Win32"])
-            print("[配置] 目标架构: Win32 (32位)")
-        elif target_platform == "win64":
-            cmake_config_args.extend(["-A", "x64"])
-            print("[配置] 目标架构: x64 (64位)")
-
-    # 配置 CMake
-    print(f"[步骤1] 配置 CMake (目标: {target_platform})...")
-    print(f"[命令] {' '.join(cmake_config_args)}")
-
-    result = subprocess.run(cmake_config_args)
-    if result.returncode != 0:
-        print("[错误] CMake 配置失败")
+    # 步骤2: 编译前准备 - 复制 src 文件，生成初始 __init__.py
+    print("\n[步骤1] 编译前准备...")
+    if not run_generate_init(target_platform, "prepare"):
         return 1
 
-    # 构建命令
-    cmake_build_args = [
-        "cmake",
-        "--build", build_dir,
-        "--config", build_type
-    ]
+    # 步骤3: CMake 编译
+    print("\n[步骤2] C++ 编译...")
+    if not run_cmake_build(target_platform, build_type, generator):
+        return 1
 
-    # 构建
-    print(f"[步骤2] 编译项目 ({build_type}, {target_platform})...")
-    print(f"[命令] {' '.join(cmake_build_args)}")
-
-    result = subprocess.run(cmake_build_args)
-    if result.returncode != 0:
-        print("[错误] 编译失败")
+    # 步骤4: 编译后整理 - 更新 __init__.py
+    print("\n[步骤3] 编译后整理...")
+    if not run_generate_init(target_platform, "finalize"):
         return 1
 
     # 成功
-    print("=" * 50)
+    print("\n" + "=" * 60)
     print("[完成] 构建成功！")
     print(f"[输出] PcCTP/{target_platform}/")
     print(f"[提示] 可以将 PcCTP/ 目录作为 Python 包使用")
-    print("=" * 50)
+    print("=" * 60)
     return 0
 
 

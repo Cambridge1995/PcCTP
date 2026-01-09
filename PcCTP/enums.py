@@ -7,7 +7,7 @@ CTP API 枚举常量定义
 共包含 319 个枚举类型，自动生成自 docs/CTP常量定义.md
 """
 
-from enum import StrEnum
+from enum import StrEnum, IntEnum
 
 # 错误码映射
 reason_map = {
@@ -805,7 +805,7 @@ class TradingType(StrEnum):
     UNTRADE = "2"  # 非交易
 
 class OffsetType(StrEnum):
-    """平仓类型
+    """对冲类型
 
     Attributes:
         OPT_OFFSET: 期权对冲
@@ -5301,3 +5301,19 @@ class PwdRcdSrc(StrEnum):
     Sync = "1"  # 来源于实时上场数据
     UserUpd = "2"  # 来源于用户修改
     SuperUserUpd = "3"  # 来源于超户修改，很可能来自主席同步数据
+
+
+class ResumeType(IntEnum):
+    """私有/公共流重传方式
+
+    Attributes:
+        RESTART: 从本交易日开始重传
+        RESUME: 从上次收到的续传
+        QUICK: 只传送登录后公共流的内容
+        NONE: 取消订阅公共流
+    """
+
+    RESTART = 0  # 从本交易日开始重传
+    RESUME = 1  # 从上次收到的续传
+    QUICK = 2  # 只传送登录后公共流的内容
+    NONE = 3  # 取消订阅公共流

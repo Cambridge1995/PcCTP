@@ -9,43 +9,20 @@ __version__ = 'v测试版本0.1.0'
 __ctp_version__ = 'v6.7.11_20250714'
 # 采集库fix版本号
 __fix_version__ = 'sfit_pro_1.0_20220124_1468'
-# 运行平台
-__platform__ = 'win64'
 # 版本类型
 __version_type__ = 'PC'
 
-__full_version__ = 'PcCTP v测试版本0.1.0 | CTP v6.7.11_20250714 | FIX sfit_pro_1.0_20220124_1468 | PC | win64'
+__full_version__ = 'PcCTP v测试版本0.1.0 | CTP v6.7.11_20250714 | FIX sfit_pro_1.0_20220124_1468 | PC '
 import platform
 import os
 from PcCTP.interface import *
 # 获取操作系统类型
-def get_os_type():
-    """获取操作系统类型: win64, win32, linux, macos, 或其他"""
-    system = platform.system().lower()
-    if system == "windows":
-        # 通过环境变量检测系统架构
-        arch_env = os.environ.get('PROCESSOR_ARCHITECTURE', '')
-        arch_env_w6432 = os.environ.get('PROCESSOR_ARCHITEW6432', '')
-        if 'AMD64' in (arch_env, arch_env_w6432):
-            return 'win64'
-        else:
-            return 'win32'
-    elif system == "linux":
-        return 'linux'
-    elif system == "darwin":
-        return 'macos'
-    else:
-        return 'other'
-
-# 调用方法获取当前系统类型
-env = get_os_type()
+from PcCTP.types import *
 
 # 通过系统类型导入对应的接口
 if env == 'win64':  # windows64位
     from PcCTP.win64 import *
-    print('导入PyCTP')
-elif env == 'win32':  # windows32位
-    from PcCTP.win32 import *
+    print('导入PcCTP')
 elif env == 'linux':  # linux
     from PcCTP.linux import *
 else:  # 其他系统 暂不支持,如：macOS
@@ -53,10 +30,10 @@ else:  # 其他系统 暂不支持,如：macOS
 
 # 导入所有枚举类（支持 from win64 import Direction, OffsetFlag 等）
 from PcCTP.enums import *
-from PcCTP.types import *
 
 # 定义__all__列表，包含所有导出的名称
 __all__ = [
+    "env",
     # 枚举类
     "AMLCheckStatus",
     "AMLGenStatus",
@@ -300,6 +277,7 @@ __all__ = [
     "ResFlag",
     "ReserveOpenAccStas",
     "ResponseValue",
+    "ResumeType",
     "ReturnLevel",
     "ReturnPattern",
     "ReturnStandard",
@@ -385,19 +363,238 @@ __all__ = [
     "get_offset_flag_name",
     # 错误码映射
     "reason_map",
+    # PyCapsule 辅助函数
+    "pycapsule_check_exact", "pycapsule_get_pointer", "pycapsule_new",
     # 字符串池监控和清理函数
     "cleanup_temporal_pools", "cleanup_instruments",
     "check_instrument_pool_size", "get_pool_sizes",
-    # 核心类（1个）
-    "MdApi",
-    # TypedDict（9个）
+    # 核心类
+    "PyMdSpi","MdApi","PyTradeSpi","TradeApi","Fix",
+    # TypedDict（226个）
+    "AccountRegister",
+    "BatchOrderAction",
+    "BrokerTradingAlgos",
+    "BrokerTradingParams",
+    "Bulletin",
+    "CFMMCTradingAccountKey",
+    "CFMMCTradingAccountToken",
+    "CancelAccount",
+    "CancelOffsetSetting",
+    "CapsuleStruct",
+    "ChangeAccount",
+    "CombAction",
+    "CombInstrumentGuard",
+    "CombLeg",
+    "CombPromotionParam",
+    "ContractBank",
     "DepthMarketData",
+    "EWarrantOffset",
+    "ErrorConditionalOrder",
+    "Exchange",
+    "ExchangeMarginRate",
+    "ExchangeMarginRateAdjust",
+    "ExchangeRate",
+    "ExecOrder",
+    "ExecOrderAction",
     "FensUserInfo",
+    "ForQuote",
     "ForQuoteRsp",
+    "InputBatchOrderAction",
+    "InputCombAction",
+    "InputExecOrder",
+    "InputExecOrderAction",
+    "InputForQuote",
+    "InputOffsetSetting",
+    "InputOptionSelfClose",
+    "InputOptionSelfCloseAction",
+    "InputOrder",
+    "InputOrderAction",
+    "InputQuote",
+    "InputQuoteAction",
+    "Instrument",
+    "InstrumentCommissionRate",
+    "InstrumentMarginRate",
+    "InstrumentOrderCommRate",
+    "InstrumentStatus",
+    "InvestUnit",
+    "Investor",
+    "InvestorCommodityGroupSPMMMargin",
+    "InvestorCommoditySPMMMargin",
+    "InvestorInfoCommRec",
+    "InvestorPortfMarginRatio",
+    "InvestorPortfSetting",
+    "InvestorPosition",
+    "InvestorPositionCombineDetail",
+    "InvestorPositionDetail",
+    "InvestorProdRCAMSMargin",
+    "InvestorProdRULEMargin",
+    "InvestorProdSPBMDetail",
+    "InvestorProductGroupMargin",
+    "MMInstrumentCommissionRate",
+    "MMOptionInstrCommRate",
     "MulticastInstrument",
+    "Notice",
+    "NotifyQueryAccount",
+    "OffsetSetting",
+    "OpenAccount",
+    "OptionInstrCommRate",
+    "OptionInstrTradeCost",
+    "OptionSelfClose",
+    "OptionSelfCloseAction",
+    "Order",
+    "OrderAction",
+    "ParkedOrder",
+    "ParkedOrderAction",
+    "Product",
+    "ProductExchRate",
+    "ProductGroup",
+    "QryAccountRegister",
+    "QryBrokerTradingAlgos",
+    "QryBrokerTradingParams",
+    "QryCFMMCTradingAccountKey",
+    "QryClassifiedInstrument",
+    "QryCombAction",
+    "QryCombInstrumentGuard",
+    "QryCombLeg",
+    "QryCombPromotionParam",
+    "QryContractBank",
+    "QryDepthMarketData",
+    "QryEWarrantOffset",
+    "QryExchange",
+    "QryExchangeMarginRate",
+    "QryExchangeMarginRateAdjust",
+    "QryExchangeRate",
+    "QryExecOrder",
+    "QryForQuote",
+    "QryInstrument",
+    "QryInstrumentCommissionRate",
+    "QryInstrumentMarginRate",
+    "QryInstrumentOrderCommRate",
+    "QryInvestUnit",
+    "QryInvestor",
+    "QryInvestorCommodityGroupSPMMMargin",
+    "QryInvestorCommoditySPMMMargin",
+    "QryInvestorInfoCommRec",
+    "QryInvestorPortfMarginRatio",
+    "QryInvestorPortfSetting",
+    "QryInvestorPosition",
+    "QryInvestorPositionCombineDetail",
+    "QryInvestorPositionDetail",
+    "QryInvestorProdRCAMSMargin",
+    "QryInvestorProdRULEMargin",
+    "QryInvestorProdSPBMDetail",
+    "QryInvestorProductGroupMargin",
+    "QryMMInstrumentCommissionRate",
+    "QryMMOptionInstrCommRate",
+    "QryMaxOrderVolume",
     "QryMulticastInstrument",
+    "QryNotice",
+    "QryOffsetSetting",
+    "QryOptionInstrCommRate",
+    "QryOptionInstrTradeCost",
+    "QryOptionSelfClose",
+    "QryOrder",
+    "QryParkedOrder",
+    "QryParkedOrderAction",
+    "QryProduct",
+    "QryProductExchRate",
+    "QryProductGroup",
+    "QryQuote",
+    "QryRCAMSCombProductInfo",
+    "QryRCAMSInstrParameter",
+    "QryRCAMSInterParameter",
+    "QryRCAMSIntraParameter",
+    "QryRCAMSInvestorCombPosition",
+    "QryRCAMSShortOptAdjustParam",
+    "QryRULEInstrParameter",
+    "QryRULEInterParameter",
+    "QryRULEIntraParameter",
+    "QryRiskSettleInvestPosition",
+    "QryRiskSettleProductStatus",
+    "QrySPBMAddOnInterParameter",
+    "QrySPBMFutureParameter",
+    "QrySPBMInterParameter",
+    "QrySPBMIntraParameter",
+    "QrySPBMInvestorPortfDef",
+    "QrySPBMOptionParameter",
+    "QrySPBMPortfDefinition",
+    "QrySPMMInstParam",
+    "QrySPMMProductParam",
+    "QrySecAgentACIDMap",
+    "QrySecAgentCheckMode",
+    "QrySecAgentTradeInfo",
+    "QrySettlementInfo",
+    "QrySettlementInfoConfirm",
+    "QryTrade",
+    "QryTraderOffer",
+    "QryTradingAccount",
+    "QryTradingCode",
+    "QryTradingNotice",
+    "QryTransferBank",
+    "QryTransferSerial",
+    "QryUserSession",
+    "QueryCFMMCTradingAccountToken",
+    "Quote",
+    "QuoteAction",
+    "RCAMSCombProductInfo",
+    "RCAMSInstrParameter",
+    "RCAMSInterParameter",
+    "RCAMSIntraParameter",
+    "RCAMSInvestorCombPosition",
+    "RCAMSShortOptAdjustParam",
+    "RULEInstrParameter",
+    "RULEInterParameter",
+    "RULEIntraParameter",
+    "RemoveParkedOrder",
+    "RemoveParkedOrderAction",
+    "ReqAuthenticate",
+    "ReqGenUserCaptcha",
+    "ReqGenUserText",
+    "ReqQueryAccount",
+    "ReqRepeal",
+    "ReqTransfer",
+    "ReqUserAuthMethod",
     "ReqUserLogin",
+    "ReqUserLoginWithCaptcha",
+    "ReqUserLoginWithOTP",
+    "ReqUserLoginWithText",
+    "RiskSettleInvestPosition",
+    "RiskSettleProductStatus",
+    "RspAuthenticate",
+    "RspGenUserCaptcha",
+    "RspGenUserText",
     "RspInfo",
+    "RspRepeal",
+    "RspTransfer",
+    "RspUserAuthMethod",
     "RspUserLogin",
+    "SPBMAddOnInterParameter",
+    "SPBMFutureParameter",
+    "SPBMInterParameter",
+    "SPBMIntraParameter",
+    "SPBMInvestorPortfDef",
+    "SPBMOptionParameter",
+    "SPBMPortfDefinition",
+    "SPMMInstParam",
+    "SPMMProductParam",
+    "SecAgentACIDMap",
+    "SecAgentCheckMode",
+    "SecAgentTradeInfo",
+    "SettlementInfo",
+    "SettlementInfoConfirm",
+    "Trade",
+    "TraderOffer",
+    "TradingAccount",
+    "TradingAccountPasswordUpdate",
+    "TradingCode",
+    "TradingNotice",
+    "TradingNoticeInfo",
+    "TransferBank",
+    "TransferSerial",
     "UserLogout",
+    "UserPasswordUpdate",
+    "UserSession",
+    "UserSystemInfo",
+    "WechatUserSystemInfo",
+    "env",
 ]

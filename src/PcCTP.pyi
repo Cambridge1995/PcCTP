@@ -1,1628 +1,1098 @@
-from typing import TypedDict, NotRequired, Required,  Union, List, Dict, Optional
+from abc import ABC
+from enum import IntEnum
+from typing import  Union, List, Dict, Optional
 import numpy as np
 
 
-class ReqUserLogin(TypedDict):
-    """用户登录请求
-
-    用于向 CTP 系统发起登录请求，包含用户身份认证信息。
-    """
-    trading_day: NotRequired[str]  # 交易日，可选
-    broker_id: Required[str]  # 经纪公司代码，必需
-    user_id: Required[str]  # 用户代码，必需
-    password: Required[str]  # 密码，必需
-    user_product_info: NotRequired[str]  # 用户产品信息，可选
-    interface_product_info: NotRequired[str]  # 接口产品信息，可选
-    protocol_info: NotRequired[str]  # 协议信息，可选
-    mac_address: NotRequired[str]  # Mac 地址，可选
-    one_time_password: NotRequired[str]  # 一次性口令，可选
-    client_ip_address: NotRequired[str]  # 客户端 IP 地址，可选
-    login_remark: NotRequired[str]  # 登录备注，可选
-
-class RspUserLogin(TypedDict):
-    """登录响应
-
-    CTP 系统返回的登录响应信息，包含会话信息和各交易所时间。
-    """
-    trading_day: str  # 当前交易日
-    login_time: str  # 登录成功时间
-    broker_id: str  # 经纪公司代码
-    user_id: str  # 用户代码
-    system_name: str  # 交易系统名称
-    front_id: int  # 前置编号
-    session_id: int  # 会话编号
-    max_order_ref: str  # 最大报单引用
-    shfe_time: str  # 上期所时间
-    dce_time: str  # 大商所时间
-    czce_time: str  # 郑商所时间
-    ffex_time: str  # 中金所时间
-    ine_time: str  # 能源中心时间
-    gfex_time: str  # 广期所时间
-
-class UserLogout(TypedDict):
-    """用户登出请求
-
-    用于向 CTP 系统发起登出请求。
-    """
-    broker_id: Required[str]  # 经纪公司代码，必需
-    user_id: Required[str]  # 用户代码，必需
-
-class RspInfo(TypedDict):
-    """响应信息
-
-    CTP API 通用响应信息，包含错误代码和错误描述。
-    """
-    error_id: int  # 错误代码，0 表示无错误
-    error_msg: str  # 错误信息描述
-
-class DepthMarketData(TypedDict):
-    """深度行情数据
-
-    CTP 行情推送的完整深度行情数据，包含最新价格、成交量、五档买卖价等信息。
-    注意：exchange_id 和 exchange_inst_id 字段在某些服务器上可能为空。
-    """
-    # ===== 字符串字段 =====
-    trading_day: str  # 交易日
-    instrument_id: str  # 合约代码
-    exchange_id: str  # 交易所代码（可能为空）
-    exchange_inst_id: str  # 合约在交易所的代码（可能为空）
-    update_time: str  # 最后修改时间 (HH:MM:SS 格式)
-    action_day: str  # 业务日期
-
-    # ===== 价格字段 =====
-    last_price: float  # 最新价
-    pre_settlement_price: float  # 昨结算价
-    pre_close_price: float  # 昨收盘价
-    pre_open_interest: float  # 昨持仓量
-    open_price: float  # 今开盘价
-    highest_price: float  # 最高价
-    lowest_price: float  # 最低价
-    close_price: float  # 今收盘价
-    settlement_price: float  # 今结算价
-    upper_limit_price: float  # 涨停板价
-    lower_limit_price: float  # 跌停板价
-    pre_delta: float  # 昨虚实度
-    curr_delta: float  # 今虚实度
-    average_price: float  # 当日均价
-
-    # ===== 成交量字段 =====
-    volume: int  # 成交量
-    turnover: float  # 成交金额
-    open_interest: float  # 持仓量
-    update_millisec: int  # 最后修改毫秒
-
-    # ===== 五档买卖价 =====
-    # 买档
-    bid_price1: float  # 买一价
-    bid_volume1: int  # 买一量
-    bid_price2: float  # 买二价
-    bid_volume2: int  # 买二量
-    bid_price3: float  # 买三价
-    bid_volume3: int  # 买三量
-    bid_price4: float  # 买四价
-    bid_volume4: int  # 买四量
-    bid_price5: float  # 买五价
-    bid_volume5: int  # 买五量
-    # 卖档
-    ask_price1: float  # 卖一价
-    ask_volume1: int  # 卖一量
-    ask_price2: float  # 卖二价
-    ask_volume2: int  # 卖二量
-    ask_price3: float  # 卖三价
-    ask_volume3: int  # 卖三量
-    ask_price4: float  # 卖四价
-    ask_volume4: int  # 卖四量
-    ask_price5: float  # 卖五价
-    ask_volume5: int  # 卖五量
-
-class ForQuoteRsp(TypedDict):
-    """询价响应
-
-    做市商接收的投资者询价信息。
-    """
-    trading_day: str  # 交易日
-    for_quote_sys_id: str  # 询价编号
-    for_quote_time: str  # 询价时间
-    action_day: str  # 业务日期
-    exchange_id: str  # 交易所代码
-    instrument_id: str  # 合约代码
-
-class FensUserInfo(TypedDict):
-    """FENS 用户信息
-
-    用于 FENS（行情增强服务）用户注册信息。
-    """
-    broker_id: Required[str]  # 经纪公司代码，必需
-    user_id: Required[str]  # 用户代码，必需
-    login_mode: NotRequired[str]  # 登录模式，可选
-
-class QryMulticastInstrument(TypedDict):
-    """查询组播合约请求
-
-    用于查询组播合约信息。
-    """
-    topic_id: NotRequired[int]  # 主题号（整数），可选
-    instrument_id: NotRequired[str]  # 合约代码，可选
-
-class MulticastInstrument(TypedDict):
-    """组播合约信息
-
-    查询组播合约的响应信息。
-    """
-    instrument_id: str  # 合约代码
-    topic_id: int  # 主题号
-    instrument_no: int  # 合约编号
-    code_price: float  # 基准价
-    volume_multiple: int  # 合约数量乘数
-    price_tick: float  # 最小变动价位
-
-
-# =============================================================================
-# 交易 API 数据结构类型定义 (TypedDict)
-# =============================================================================
-
-class RspAuthenticate(TypedDict):
-    """客户端认证响应"""
-    broker_id: str  # 经纪公司代码
-    user_id: str  # 用户代码
-    user_product_info: str  # 用户端产品信息
-    app_id: str  # App代码
-    app_type: str  # App类型
-
-class UserPasswordUpdate(TypedDict):
-    """用户口令更新请求"""
-    broker_id: str
-    user_id: str
-    old_password: str
-    new_password: str
-
-class TradingAccountPasswordUpdate(TypedDict):
-    """资金账户口令更新请求"""
-    broker_id: str
-    account_id: str
-    old_password: str
-    new_password: str
-    currency_id: str
-
-class InputOrder(TypedDict):
-    """报单录入请求"""
-    broker_id: str
-    investor_id: str
-    order_ref: str
-    user_id: str
-    instrument_id: str
-    exchange_id: str
-    order_price_type: str
-    direction: str
-    comb_offset_flag: str
-    comb_hedge_flag: str
-    limit_price: float
-    volume_total_original: int
-    time_condition: str
-    gtd_date: str
-    volume_condition: str
-    min_volume: int
-    contingent_condition: str
-    stop_price: float
-    force_close_reason: str
-    is_auto_suspend: int
-    business_unit: str
-    user_force_close: int
-    is_swap_order: int
-    invest_unit_id: str
-    account_id: str
-    currency_id: str
-    client_id: str
-    ip_address: str
-    mac_address: str
-    order_memo: str
-
-class Order(TypedDict):
-    """报单"""
-    broker_id: str
-    investor_id: str
-    order_ref: str
-    user_id: str
-    instrument_id: str
-    exchange_id: str
-    order_price_type: str
-    direction: str
-    comb_offset_flag: str
-    comb_hedge_flag: str
-    limit_price: float
-    volume_total_original: int
-    time_condition: str
-    gtd_date: str
-    volume_condition: str
-    min_volume: int
-    contingent_condition: str
-    stop_price: float
-    force_close_reason: str
-    is_auto_suspend: int
-    order_status: str
-    order_submit_status: str
-    volume_traded: int
-    volume_total: int
-    front_id: int
-    session_id: int
-    order_sys_id: str
-    order_local_id: str
-    participant_id: str
-    client_id: str
-    trader_id: str
-    trading_day: str
-    settlement_id: int
-    order_source: str
-    order_type: str
-    insert_date: str
-    insert_time: str
-    active_time: str
-    suspend_time: str
-    update_time: str
-    cancel_time: str
-    active_trader_id: str
-    business_unit: str
-    user_force_close: int
-    is_swap_order: int
-    clearing_part_id: str
-    sequence_no: int
-    broker_order_seq: int
-    status_msg: str
-    branch_id: str
-    invest_unit_id: str
-    account_id: str
-    currency_id: str
-    ip_address: str
-    mac_address: str
-    order_memo: str
-
-class Trade(TypedDict):
-    """成交"""
-    broker_id: str
-    investor_id: str
-    order_ref: str
-    user_id: str
-    instrument_id: str
-    exchange_id: str
-    direction: str
-    offset_flag: str
-    hedge_flag: str
-    price: float
-    volume: int
-    trade_id: str
-    order_sys_id: str
-    order_local_id: str
-    participant_id: str
-    client_id: str
-    trader_id: str
-    trading_role: str
-    trading_day: str
-    settlement_id: int
-    trade_type: str
-    price_source: str
-    trade_source: str
-    trade_date: int
-    trade_time: str
-    business_unit: str
-    clearing_part_id: str
-    sequence_no: int
-    broker_order_seq: int
-    branch_id: str
-    invest_unit_id: str
-    account_id: str
-    currency_id: str
-    ip_address: str
-    mac_address: str
-
-class InputOrderAction(TypedDict):
-    """报单操作请求"""
-    broker_id: str
-    investor_id: str
-    order_action_ref: str
-    order_ref: str
-    user_id: str
-    instrument_id: str
-    exchange_id: str
-    front_id: int
-    session_id: int
-    order_sys_id: str
-    action_flag: str
-    limit_price: float
-    volume_change: int
-    invest_unit_id: str
-    ip_address: str
-    mac_address: str
-    order_memo: str
-
-class OrderAction(TypedDict):
-    """报单操作"""
-    broker_id: str
-    investor_id: str
-    order_action_ref: str
-    order_ref: str
-    user_id: str
-    instrument_id: str
-    exchange_id: str
-    front_id: int
-    session_id: int
-    order_sys_id: str
-    action_flag: str
-    limit_price: float
-    volume_change: int
-    action_date: str
-    action_time: str
-    trader_id: str
-    install_id: int
-    order_action_status: str
-    branch_id: str
-    invest_unit_id: str
-    ip_address: str
-    mac_address: str
-
-class ParkedOrder(TypedDict):
-    """预埋单"""
-    broker_id: str
-    investor_id: str
-    order_ref: str
-    user_id: str
-    instrument_id: str
-    exchange_id: str
-    order_price_type: str
-    direction: str
-    comb_offset_flag: str
-    comb_hedge_flag: str
-    limit_price: float
-    volume_total_original: int
-    time_condition: str
-    gtd_date: str
-    volume_condition: str
-    min_volume: int
-    contingent_condition: str
-    stop_price: float
-    force_close_reason: str
-    is_auto_suspend: int
-    business_unit: str
-    user_force_close: int
-    parked_order_id: str
-    user_type: str
-    status: str
-    error_id: int
-    error_msg: str
-    invest_unit_id: str
-    account_id: str
-    currency_id: str
-    client_id: str
-    ip_address: str
-    mac_address: str
-
-class ParkedOrderAction(TypedDict):
-    """预埋撤单"""
-    broker_id: str
-    investor_id: str
-    order_action_ref: str
-    order_ref: str
-    user_id: str
-    instrument_id: str
-    exchange_id: str
-    front_id: int
-    session_id: int
-    order_sys_id: str
-    action_flag: str
-    limit_price: float
-    volume_change: int
-    parked_order_action_id: str
-    user_type: str
-    status: str
-    error_id: int
-    error_msg: str
-    invest_unit_id: str
-    branch_id: str
-    ip_address: str
-    mac_address: str
-
-class InvestorPosition(TypedDict):
-    """投资者持仓"""
-    broker_id: str
-    investor_id: str
-    instrument_id: str
-    posi_direction: str
-    hedge_flag: str
-    position_date: str
-    yd_position: int
-    position: int
-    long_frozen: int
-    short_frozen: int
-    long_frozen_amount: float
-    short_frozen_amount: float
-    open_volume: int
-    close_volume: int
-    open_amount: float
-    close_amount: float
-    position_cost: float
-    pre_margin: float
-    use_margin: float
-    frozen_margin: float
-    frozen_cash: float
-    frozen_commission: float
-    cash_in: float
-    commission: float
-    close_profit: float
-    position_profit: float
-    settlement_id: int
-    trading_day: str
-    invest_unit_id: str
-    exchange_id: str
-
-class TradingAccount(TypedDict):
-    """资金账户"""
-    broker_id: str
-    account_id: str
-    trading_day: str
-    settlement_id: int
-    pre_mortgage: float
-    pre_credit: float
-    pre_deposit: float
-    pre_balance: float
-    pre_margin: float
-    deposit: float
-    withdraw: float
-    frozen_margin: float
-    frozen_cash: float
-    frozen_commission: float
-    curr_margin: float
-    cash_in: float
-    commission: float
-    close_profit: float
-    position_profit: float
-    balance: float
-    available: float
-    withdraw_quota: float
-    reserve: float
-    credit: float
-    mortgage: float
-    exchange_margin: float
-    delivery_margin: float
-    exchange_delivery_margin: float
-    interest_base: float
-    interest: float
-    currency_id: str
-
-class Investor(TypedDict):
-    """投资者"""
-    investor_id: str
-    broker_id: str
-    investor_group_id: str
-    investor_name: str
-    identified_card_type: str
-    identified_card_no: str
-    is_active: int
-
-class TradingCode(TypedDict):
-    """交易编码"""
-    investor_id: str
-    broker_id: str
-    exchange_id: str
-    client_id: str
-    is_active: int
-    client_id_type: str
-    branch_id: str
-    biz_type: str
-    invest_unit_id: str
-
-class InstrumentMarginRate(TypedDict):
-    """合约保证金率"""
-    broker_id: str
-    investor_id: str
-    instrument_id: str
-    exchange_id: str
-    invest_unit_id: str
-    investor_range: str
-    hedge_flag: str
-    long_margin_ratio_by_money: float
-    long_margin_ratio_by_volume: float
-    short_margin_ratio_by_money: float
-    short_margin_ratio_by_volume: float
-    is_relative: int
-
-class InstrumentCommissionRate(TypedDict):
-    """合约手续费率"""
-    broker_id: str
-    investor_id: str
-    instrument_id: str
-    exchange_id: str
-    invest_unit_id: str
-    investor_range: str
-    open_ratio_by_money: float
-    open_ratio_by_volume: float
-    close_ratio_by_money: float
-    close_ratio_by_volume: float
-    close_today_ratio_by_money: float
-    close_today_ratio_by_volume: float
-    biz_type: str
-
-class Instrument(TypedDict):
-    """合约"""
-    instrument_id: str
-    exchange_id: str
-    instrument_name: str
-    product_class: str
-    delivery_year: int
-    delivery_month: int
-    create_date: str
-    open_date: str
-    expire_date: str
-    start_deliv_date: str
-    end_deliv_date: str
-    volume_multiple: int
-    price_tick: float
-    max_market_order_volume: int
-    min_market_order_volume: int
-    max_limit_order_volume: int
-    min_limit_order_volume: int
-    inst_life_phase: str
-    is_trading: int
-    position_type: str
-    position_date_type: str
-    long_margin_ratio: float
-    short_margin_ratio: float
-    max_margin_side_algorithm: str
-    strike_price: float
-    options_type: str
-    underlying_instr_id: str
-    strike_mode: str
-
-class SettlementInfo(TypedDict):
-    """投资者结算结果"""
-    trading_day: str
-    settlement_id: int
-    broker_id: str
-    investor_id: str
-    sequence_no: int
-    content: str
-    account_id: str
-    currency_id: str
-
-class InstrumentStatus(TypedDict):
-    """合约交易状态"""
-    exchange_id: str
-    settlement_group_id: str
-    instrument_status: str
-    trading_segment_sn: int
-    enter_time: str
-    enter_reason: str
-    exchange_inst_id: str
-    instrument_id: str
-class RspGenUserCaptcha(TypedDict):
-    """获取图形验证码请求的回复"""
-    broker_id: str  # 经纪公司代码
-    user_id: str  # 用户代码
-    captcha_info_len: int  # 图片信息长度
-    captcha_info: bytes  # 图片信息 (二进制数据)
-
-
-class RspGenUserText(TypedDict):
-    """获取短信验证码请求的回复"""
-    user_text_seq: int  # 短信验证码序号
-
-
-class SettlementInfoConfirm(TypedDict):
-    """投资者结算结果确认"""
-    broker_id: str  # 经纪公司代码
-    investor_id: str  # 投资者代码
-    confirm_date: str  # 确认日期
-    confirm_time: str  # 确认时间
-    settlement_id: int  # 结算编号
-
-
-class Exchange(TypedDict):
-    """交易所"""
-    exchange_id: str  # 交易所代码
-    exchange_name: str  # 交易所名称
-    exchange_property: str  # 交易所属性 (ExchangeProperty枚举)
-
-
-class Product(TypedDict):
-    """产品"""
-    product_name: str  # 产品名称
-    exchange_id: str  # 交易所代码
-    product_class: str  # 产品类型 (ProductClass枚举)
-    volume_multiple: int  # 合约数量乘数
-    price_tick: float  # 最小变动价位
-    max_market_order_volume: int  # 市价单最大下单量
-    min_market_order_volume: int  # 市价单最小下单量
-    max_limit_order_volume: int  # 限价单最大下单量
-    min_limit_order_volume: int  # 限价单最小下单量
-
-
-class TransferBank(TypedDict):
-    """查询转帐银行响应"""
-    bank_id: str  # 银行代码
-    bank_brch_id: str  # 银行分中心代码
-    bank_name: str  # 银行名称
-    is_active: int  # 是否活跃
-
-
-class InvestorPositionDetail(TypedDict):
-    """查询投资者持仓明细响应"""
-    broker_id: str  # 经纪公司代码
-    investor_id: str  # 投资者代码
-    hedge_flag: str  # 投机套保标志 (HedgeFlag枚举)
-    direction: str  # 买卖 (Direction枚举)
-    open_date: str  # 开仓日期
-    trade_id: str  # 成交编号
-    volume: int  # 数量
-    open_price: float  # 开仓价
-    trading_day: str  # 交易日
-    settlement_id: int  # 结算编号
-    instrument_id: str  # 合约代码
-    exchange_id: str  # 交易所代码
-    close_profit_by_date: float  # 按日平仓盈亏
-    position_profit_by_date: float  # 按日持仓盈亏
-    margin: float  # 保证金
-    exch_margin: float  # 交易所保证金
-    close_amount: float  # 平仓金额
-    margin_rate_by_money: float  # 保证金率
-    last_settlement_price: float  # 上次结算价
-    settlement_price: float  # 结算价
-    close_volume: int  # 平仓量
-    diff_price: float  # 价格差
-
-
-class Notice(TypedDict):
-    """查询客户通知响应"""
-    broker_id: str  # 经纪公司代码
-    content: str  # 消息正文
-    sequence_label: str  # 经纪公司通知内容序列号
-
-
-class TradingNotice(TypedDict):
-    """交易通知"""
-    broker_id: str  # 经纪公司代码
-    investor_range: str  # 投资者范围 (InvestorRange枚举)
-    investor_id: str  # 投资者代码
-    sequence_series: int  # 序列系列号
-    user_id: str  # 用户代码
-    send_time: str  # 发送时间
-    sequence_no: int  # 序列号
-    field_content: str  # 域内容
-
-
-class Bulletin(TypedDict):
-    """交易所公告通知"""
-    exchange_id: str  # 交易所代码
-    trading_day: str  # 交易日
-    bulletin_id: str  # 公告编号
-    sequence_no: int  # 序列号
-    news_type: str  # 公告类型
-    news_urgency: str  # 紧急程度
-    send_time: str  # 发送时间
-    abstract: str  # 摘要
-    content: bytes  # 内容 (二进制数据)
-    source_file: bytes  # 来源文件 (二进制数据)
-
-
-class ErrorConditionalOrder(TypedDict):
-    """提示条件单校验错误"""
-    broker_id: str  # 经纪公司代码
-    investor_id: str  # 投资者代码
-    order_ref: str  # 报单引用
-    user_id: str  # 用户代码
-    order_price_type: str  # 报单价格条件 (OrderPriceType枚举)
-    direction: str  # 买卖方向 (Direction枚举)
-    limit_price: float  # 价格
-    volume_total_original: int  # 数量
-    time_condition: str  # 有效期类型
-    gtd_date: str  # GTD日期
-    volume_condition: str  # 成交量类型
-    min_volume: int  # 最小成交量
-    contingent_condition: str  # 触发条件
-    stop_price: float  # 止损价
-    force_close_reason: str  # 强平原因
-    is_auto_suspend: int  # 自动挂起标志
-    business_unit: str  # 业务单元
-    user_force_close: int  # 用户强平标志
-    error_code: str  # 错误代码
-    error_msg: str  # 错误信息
-    req_rtn_order_insert_field: str  # 请求报单录入字段
-    instrument_id: str  # 合约代码
-    exchange_id: str  # 交易所代码
-
-
-class ContractBank(TypedDict):
-    """查询签约银行响应"""
-    broker_id: str  # 经纪公司代码
-    bank_id: str  # 银行代码
-    bank_brch_id: str  # 银行分中心代码
-    bank_name: str  # 银行名称
-
-
-class QueryCFMMCTradingAccountToken(TypedDict):
-    """请求查询监控中心用户令牌"""
-    broker_id: str  # 经纪公司代码
-    investor_id: str  # 投资者代码
-    invest_unit_id: str  # 投资单元代码
-
-
-class CFMMCTradingAccountToken(TypedDict):
-    """保证金监控中心用户令牌"""
-    broker_id: str  # 经纪公司代码
-    participant_id: str  # 经纪公司统一编码
-    account_id: str  # 投资者账号
-    key_id: int  # 密钥编号
-    token: str  # 动态令牌
-class InputExecOrder(TypedDict):
-    """输入执行宣告"""
-    broker_id: str
-    investor_id: str
-    exec_order_ref: str
-    user_id: str
-    volume: int
-    request_id: int
-    business_unit: str
-    offset_flag: str  # 枚举: OffsetFlagType
-    hedge_flag: str  # 枚举: HedgeFlagType
-    action_type: str  # 枚举: ActionTypeType
-    posi_direction: str  # 枚举: PosiDirectionType
-    reserve_position_flag: str  # 枚举: ExecOrderPositionFlagType
-    close_flag: str  # 枚举: ExecOrderCloseFlagType
-    exchange_id: str
-    invest_unit_id: str
-    account_id: str
-    currency_id: str
-    instrument_id: str
-
-
-class InputExecOrderAction(TypedDict):
-    """输入执行宣告操作"""
-    broker_id: str
-    investor_id: str
-    exec_order_action_ref: str
-    exec_order_ref: str
-    request_id: int
-    front_id: int
-    session_id: int
-    exchange_id: str
-    exec_order_sys_id: str
-    action_flag: str  # 枚举: ActionFlagType
-    user_id: str
-    invest_unit_id: str
-    instrument_id: str
-
-
-class ExecOrder(TypedDict):
-    """执行宣告"""
-    broker_id: str
-    investor_id: str
-    exec_order_ref: str
-    user_id: str
-    volume: int
-    request_id: int
-    business_unit: str
-    offset_flag: str  # 枚举: OffsetFlagType
-    hedge_flag: str  # 枚举: HedgeFlagType
-    action_type: str  # 枚举: ActionTypeType
-    posi_direction: str  # 枚举: PosiDirectionType
-    reserve_position_flag: str  # 枚举: ExecOrderPositionFlagType
-    close_flag: str  # 枚举: ExecOrderCloseFlagType
-    exec_order_local_id: str
-    exchange_id: str
-    trading_day: str
-    settlement_id: int
-    exec_order_sys_id: str
-    insert_date: str
-    insert_time: str
-    cancel_time: str
-    exec_result: str  # 枚举: ExecResultType
-    sequence_no: int
-    front_id: int
-    session_id: int
-    user_product_info: str
-    status_msg: str
-    active_user_id: str
-    broker_exec_order_seq: int
-    branch_id: str
-    invest_unit_id: str
-    account_id: str
-    currency_id: str
-    instrument_id: str
-
-
-class InputForQuote(TypedDict):
-    """输入的询价"""
-    broker_id: str
-    investor_id: str
-    for_quote_ref: str
-    user_id: str
-    exchange_id: str
-    invest_unit_id: str
-    instrument_id: str
-
-
-class InputQuote(TypedDict):
-    """输入的报价"""
-    broker_id: str
-    investor_id: str
-    quote_ref: str
-    user_id: str
-    ask_price: float
-    bid_price: float
-    ask_volume: int
-    bid_volume: int
-    request_id: int
-    business_unit: str
-    ask_offset_flag: str  # 枚举: OffsetFlagType
-    bid_offset_flag: str  # 枚举: OffsetFlagType
-    ask_hedge_flag: str  # 枚举: HedgeFlagType
-    bid_hedge_flag: str  # 枚举: HedgeFlagType
-    ask_order_ref: str
-    bid_order_ref: str
-    for_quote_sys_id: str
-    exchange_id: str
-    invest_unit_id: str
-    client_id: str
-    instrument_id: str
-    replace_sys_id: str
-    time_condition: str  # 枚举: TimeConditionType
-    order_memo: str
-
-
-class InputQuoteAction(TypedDict):
-    """输入报价操作"""
-    broker_id: str
-    investor_id: str
-    quote_action_ref: str
-    quote_ref: str
-    request_id: int
-    front_id: int
-    session_id: int
-    exchange_id: str
-    quote_sys_id: str
-    action_flag: str  # 枚举: ActionFlagType
-    user_id: str
-    invest_unit_id: str
-    client_id: str
-    instrument_id: str
-    order_memo: str
-
-
-
-
-
-class Quote(TypedDict):
-    """报价"""
-    broker_id: str
-    investor_id: str
-    quote_ref: str
-    user_id: str
-    ask_price: float
-    bid_price: float
-    ask_volume: int
-    bid_volume: int
-    request_id: int
-    business_unit: str
-    ask_offset_flag: str  # 枚举: OffsetFlagType
-    bid_offset_flag: str  # 枚举: OffsetFlagType
-    ask_hedge_flag: str  # 枚举: HedgeFlagType
-    bid_hedge_flag: str  # 枚举: HedgeFlagType
-    ask_order_ref: str
-    bid_order_ref: str
-    for_quote_sys_id: str
-    exchange_id: str
-    quote_local_id: str
-    quote_sys_id: str
-    trading_day: str
-    settlement_id: int
-    quote_status: str  # 枚举: ForQuoteStatusType
-    front_id: int
-    session_id: int
-    status_msg: str
-    active_user_id: str
-    broker_quote_seq: int
-    invest_unit_id: str
-    instrument_id: str
-    exchange_inst_id: str
-
-
-class ForQuote(TypedDict):
-    """询价"""
-    broker_id: str
-    investor_id: str
-    for_quote_ref: str
-    user_id: str
-    for_quote_local_id: str
-    exchange_id: str
-    insert_date: str
-    insert_time: str
-    for_quote_status: str  # 枚举: ForQuoteStatusType
-    front_id: int
-    session_id: int
-    status_msg: str
-    active_user_id: str
-    instrument_id: str
-
-
-class QryMaxOrderVolume(TypedDict):
-    """查询最大报单数量"""
-    broker_id: str
-    investor_id: str
-    direction: str  # 枚举: DirectionType
-    offset_flag: str  # 枚举: OffsetFlagType
-    hedge_flag: str  # 枚举: HedgeFlagType
-    max_volume: int
-    exchange_id: str
-    invest_unit_id: str
-    instrument_id: str
-
-
-class InputBatchOrderAction(TypedDict):
-    """输入批量报单操作"""
-    broker_id: str
-    investor_id: str
-    order_action_ref: str
-    request_id: int
-    front_id: int
-    session_id: int
-    exchange_id: str
-    user_id: str
-    invest_unit_id: str
-
-
-class BatchOrderAction(TypedDict):
-    """批量报单操作"""
-    broker_id: str
-    investor_id: str
-    order_action_ref: str
-    request_id: int
-    front_id: int
-    session_id: int
-    exchange_id: str
-    action_date: str
-    action_time: str
-    action_local_id: str
-    order_action_status: str  # 枚举: OrderActionStatusType
-    user_id: str
-    status_msg: str
-    invest_unit_id: str
-
-class SecAgentACIDMap(TypedDict):
-    """二级代理ACID映射"""
-    broker_id: str
-    user_id: str
-    account_id: str
-    currency_id: str
-    broker_sec_agent_id: str
-
-
-class ProductExchRate(TypedDict):
-    """产品汇率"""
-    quote_currency_id: str
-    exchange_rate: float
-    exchange_id: str
-    product_id: str
-
-
-class ProductGroup(TypedDict):
-    """产品组"""
-    exchange_id: str
-    product_id: str
-    product_group_id: str
-
-
-class MMInstrumentCommissionRate(TypedDict):
-    """做市商合约手续费率"""
-    broker_id: str
-    investor_id: str
-    open_ratio_by_money: float
-    open_ratio_by_volume: float
-    close_ratio_by_money: float
-    close_ratio_by_volume: float
-    close_today_ratio_by_money: float
-    close_today_ratio_by_volume: float
-    instrument_id: str
-
-
-class MMOptionInstrCommRate(TypedDict):
-    """做市商期权合约手续费率"""
-    broker_id: str
-    investor_id: str
-    open_ratio_by_money: float
-    open_ratio_by_volume: float
-    close_ratio_by_money: float
-    close_ratio_by_volume: float
-    close_today_ratio_by_money: float
-    close_today_ratio_by_volume: float
-
-
-class InstrumentOrderCommRate(TypedDict):
-    """合约报单手续费率"""
-    broker_id: str
-    investor_id: str
-    hedge_flag: str  # 枚举: HedgeFlagType
-    order_comm_by_volume: float
-    order_action_comm_by_volume: float
-    exchange_id: str
-    invest_unit_id: str
-    instrument_id: str
-
-
-class SecAgentCheckMode(TypedDict):
-    """二级代理校验模式"""
-    investor_id: str
-    broker_id: str
-    currency_id: str
-    broker_sec_agent_id: str
-    check_self_account: bool
-
-
-class SecAgentTradeInfo(TypedDict):
-    """二级代理交易信息"""
-    broker_id: str
-    broker_sec_agent_id: str
-    investor_id: str
-    long_customer_name: str
-
-
-class OptionInstrTradeCost(TypedDict):
-    """期权合约交易成本"""
-    broker_id: str
-    investor_id: str
-    hedge_flag: str  # 枚举: HedgeFlagType
-    fixed_margin: float
-    mini_margin: float
-    royalty: float
-    exch_fixed_margin: float
-    exch_mini_margin: float
-    exchange_id: str
-    invest_unit_id: str
-    instrument_id: str
-
-
-class OptionInstrCommRate(TypedDict):
-    """期权合约手续费率"""
-    broker_id: str
-    investor_id: str
-    open_ratio_by_money: float
-    open_ratio_by_volume: float
-    close_ratio_by_money: float
-    close_ratio_by_volume: float
-    close_today_ratio_by_money: float
-    close_today_ratio_by_volume: float
-    strike_ratio_by_money: float
-    strike_ratio_by_volume: float
-
-
-class BrokerTradingParams(TypedDict):
-    """经纪公司交易参数"""
-    broker_id: str
-    investor_id: str
-    margin_price_type: str  # 枚举: MarginPriceTypeType
-    algorithm: str  # 枚举: AlgorithmType
-    avail_include_close_profit: str  # 枚举: IncludeCloseProfitType
-    currency_id: str
-    option_royalty_price_type: str  # 枚举: OptionRoyaltyPriceTypeType
-    account_id: str
-
-
-class BrokerTradingAlgos(TypedDict):
-    """经纪公司交易算法"""
-    broker_id: str
-    exchange_id: str
-    handle_position_algo_id: str
-    find_margin_rate_algo_id: str
-    handle_trading_account_algo_id: str
-    instrument_id: str
-
-
-class RemoveParkedOrder(TypedDict):
-    """删除预埋报单"""
-    broker_id: str
-    investor_id: str
-    parked_order_id: str
-    invest_unit_id: str
-
-
-class RemoveParkedOrderAction(TypedDict):
-    """删除预埋撤单"""
-    broker_id: str
-    investor_id: str
-    parked_order_action_id: str
-    invest_unit_id: str
-
-
-
-class InputOptionSelfClose(TypedDict):
-    """输入期权自对冲"""
-    broker_id: str
-    investor_id: str
-    option_self_close_ref: str
-    user_id: str
-    volume: int
-    request_id: int
-    business_unit: str
-    hedge_flag: str  # 枚举: HedgeFlagType
-    opt_self_close_flag: str  # 枚举: OptSelfCloseFlagType
-    exchange_id: str
-    invest_unit_id: str
-    account_id: str
-    currency_id: str
-    client_id: str
-    instrument_id: str
-
-
-class InputOptionSelfCloseAction(TypedDict):
-    """输入期权自对冲操作"""
-    broker_id: str
-    investor_id: str
-    option_self_close_action_ref: str
-    option_self_close_ref: str
-    request_id: int
-    front_id: int
-    session_id: int
-    exchange_id: str
-    option_self_close_sys_id: str
-    action_flag: str  # 枚举: ActionFlagType
-    user_id: str
-    invest_unit_id: str
-    instrument_id: str
-
-
-class OptionSelfClose(TypedDict):
-    """期权自对冲"""
-    broker_id: str
-    investor_id: str
-    option_self_close_ref: str
-    user_id: str
-    volume: int
-    request_id: int
-    business_unit: str
-    hedge_flag: str  # 枚举: HedgeFlagType
-    opt_self_close_flag: str  # 枚举: OptSelfCloseFlagType
-    option_self_close_local_id: str
-    exchange_id: str
-    trading_day: str
-    settlement_id: int
-    option_self_close_sys_id: str
-    insert_date: str
-    insert_time: str
-    cancel_time: str
-    exec_result: str  # 枚举: ExecResultType
-    sequence_no: int
-    front_id: int
-    session_id: int
-    user_product_info: str
-    status_msg: str
-    active_user_id: str
-    broker_option_self_close_seq: int
-    branch_id: str
-    invest_unit_id: str
-    account_id: str
-    currency_id: str
-    instrument_id: str
-
-
-class InputCombAction(TypedDict):
-    """输入的申请组合"""
-    broker_id: str
-    investor_id: str
-    comb_action_ref: str
-    user_id: str
-    direction: str  # 枚举: DirectionType
-    volume: int
-    comb_direction: str  # 枚举: CombDirectionType
-    hedge_flag: str  # 枚举: HedgeFlagType
-    exchange_id: str
-    invest_unit_id: str
-    instrument_id: str
-
-
-class CombAction(TypedDict):
-    """申请组合"""
-    broker_id: str
-    investor_id: str
-    comb_action_ref: str
-    user_id: str
-    direction: str  # 枚举: DirectionType
-    volume: int
-    comb_direction: str  # 枚举: CombDirectionType
-    hedge_flag: str  # 枚举: HedgeFlagType
-    action_local_id: str
-    exchange_id: str
-    trading_day: str
-    settlement_id: int
-    sequence_no: int
-    front_id: int
-    session_id: int
-    user_product_info: str
-    status_msg: str
-    com_trade_id: str
-    branch_id: str
-    invest_unit_id: str
-    instrument_id: str
-
-
-class CombInstrumentGuard(TypedDict):
-    """组合合约安全系数"""
-    broker_id: str
-    guarant_ratio: int
-    exchange_id: str
-    instrument_id: str
-
-
-class InvestorPositionCombineDetail(TypedDict):
-    """投资者持仓组合明细"""
-    trading_day: str
-    open_date: str
-    exchange_id: str
-    settlement_id: int
-    broker_id: str
-    investor_id: str
-    com_trade_id: str
-    trade_id: str
-    hedge_flag: str  # 枚举: HedgeFlagType
-    direction: str  # 枚举: DirectionType
-    total_amt: int
-    margin: float
-    exch_margin: float
-    margin_rate_by_money: float
-    margin_rate_by_volume: float
-    leg_id: str
-    leg_multiple: int
-    trade_group_id: str
-    invest_unit_id: str
-    instrument_id: str
-    comb_instrument_id: str
-
-
-class EWarrantOffset(TypedDict):
-    """仓单折抵信息"""
-    trading_day: str
-    broker_id: str
-    investor_id: str
-    exchange_id: str
-    direction: str  # 枚举: DirectionType
-    hedge_flag: str  # 枚举: HedgeFlagType
-    volume: int
-    invest_unit_id: str
-    instrument_id: str
-
-
-class InvestorProductGroupMargin(TypedDict):
-    """投资者品种/跨品种保证金"""
-    broker_id: str
-    investor_id: str
-    trading_day: str
-    settlement_id: int
-    frozen_margin: float
-    long_frozen_margin: float
-    short_frozen_margin: float
-    use_margin: float
-    long_use_margin: float
-    short_use_margin: float
-
-
-class TransferSerial(TypedDict):
-    """转账流水"""
-    plate_serial: int
-    trade_date: str
-    trading_day: str
-    trade_time: str
-    trade_code: str
-    session_id: int
-    bank_id: str
-    bank_account: str
-    broker_id: str
-    investor_id: str
-    account_id: str
-    currency_id: str
-    trade_amount: float
-    cust_fee: float
-
-
-class AccountRegister(TypedDict):
-    """银期签约"""
-    trade_day: str
-    bank_id: str
-    bank_account: str
-    broker_id: str
-    account_id: str
-    customer_name: str
-    currency_id: str
-    reg_date: str
-    out_date: str
-
-
-class ExchangeMarginRate(TypedDict):
-    """交易所保证金率"""
-    broker_id: str
-    hedge_flag: str  # 枚举: HedgeFlagType
-    long_margin_ratio_by_money: float
-    long_margin_ratio_by_volume: float
-    short_margin_ratio_by_money: float
-    short_margin_ratio_by_volume: float
-    exchange_id: str
-    instrument_id: str
-
-
-class ExchangeMarginRateAdjust(TypedDict):
-    """交易所保证金率调整"""
-    broker_id: str
-    hedge_flag: str  # 枚举: HedgeFlagType
-    long_margin_ratio_by_money: float
-    long_margin_ratio_by_volume: float
-    short_margin_ratio_by_money: float
-    short_margin_ratio_by_volume: float
-    exchange_id: str
-    instrument_id: str
-
-
-class ExchangeRate(TypedDict):
-    """汇率"""
-    broker_id: str
-    from_currency_id: str
-    from_currency_unit: int
-    to_currency_id: str
-    exchange_rate: float
-
-
-class InvestUnit(TypedDict):
-    """投资单元"""
-    broker_id: str
-    investor_id: str
-    invest_unit_id: str
-    investor_unit_name: str
-    investor_group_id: str
-    comm_model_id: str
-    margin_model_id: str
-    account_id: str
-    currency_id: str
-class RspTransfer(TypedDict):
-    """转账响应 (核心字段)"""
-    trade_code: str
-    bank_id: str
-    bank_branch_id: str
-    broker_id: str
-    future_branch_id: str
-    trade_date: str
-    trade_time: str
-    bank_serial: str
-    trading_day: str
-    plate_serial: int
-    session_id: int
-    customer_name: str
-    id_card_type: str
-    identified_card_no: str
-    cust_type: str
-    bank_account: str
-    account_id: str
-    user_id: str
-    currency_id: str
-    trade_amount: float
-    future_fetch_amount: float
-    fee_pay_flag: str
-    cust_fee: float
-    broker_fee: float
-    message: str
-    request_id: int
-    tid: str
-    transfer_status: str
-    error_id: int
-    error_msg: str
-
-
-class RspRepeal(TypedDict):
-    """冲正响应 (核心字段)"""
-    repeal_time_interval: int
-    repealed_times: int
-    bank_repeal_flag: str
-    broker_repeal_flag: str
-    plate_repeal_serial: int
-    bank_repeal_serial: str
-    future_repeal_serial: int
-    trade_code: str
-    bank_id: str
-    bank_branch_id: str
-    broker_id: str
-    future_branch_id: str
-    trade_date: str
-    trade_time: str
-    bank_serial: str
-    trading_day: str
-    plate_serial: int
-    session_id: int
-    customer_name: str
-    account_id: str
-    user_id: str
-    currency_id: str
-    trade_amount: float
-    message: str
-    request_id: int
-    tid: str
-    error_id: int
-    error_msg: str
-
-
-class NotifyQueryAccount(TypedDict):
-    """查询账户通知 (核心字段)"""
-    trade_code: str
-    bank_id: str
-    bank_branch_id: str
-    broker_id: str
-    future_branch_id: str
-    trade_date: str
-    trade_time: str
-    bank_serial: str
-    trading_day: str
-    plate_serial: int
-    session_id: int
-    customer_name: str
-    bank_account: str
-    account_id: str
-    user_id: str
-    currency_id: str
-    bank_balance: float
-    future_fetch_amount: float
-    error_id: int
-    error_msg: str
-
-
-class ReqTransfer(TypedDict):
-    """转账请求 (核心字段)"""
-    trade_code: str
-    bank_id: str
-    bank_branch_id: str
-    broker_id: str
-    future_branch_id: str
-    trade_date: str
-    trade_time: str
-    bank_serial: str
-    trading_day: str
-    plate_serial: int
-    session_id: int
-    customer_name: str
-    bank_account: str
-    account_id: str
-    user_id: str
-    currency_id: str
-    trade_amount: float
-
-
-class ReqRepeal(TypedDict):
-    """冲正请求 (核心字段)"""
-    repeal_time_interval: int
-    repealed_times: int
-    bank_repeal_flag: str
-    broker_repeal_flag: str
-    plate_repeal_serial: int
-    bank_repeal_serial: str
-    future_repeal_serial: int
-    trade_code: str
-    bank_id: str
-    bank_branch_id: str
-    broker_id: str
-    future_branch_id: str
-    trade_date: str
-    trade_time: str
-    bank_serial: str
-    trading_day: str
-    plate_serial: int
-    session_id: int
-    bank_account: str
-    account_id: str
-    user_id: str
-    currency_id: str
-    trade_amount: float
-
-
-class ReqQueryAccount(TypedDict):
-    """查询账户请求 (核心字段)"""
-    trade_code: str
-    bank_id: str
-    bank_branch_id: str
-    broker_id: str
-    future_branch_id: str
-    trade_date: str
-    trade_time: str
-    bank_serial: str
-    trading_day: str
-    plate_serial: int
-    session_id: int
-    bank_account: str
-    account_id: str
-    user_id: str
-    currency_id: str
-
-
-class OpenAccount(TypedDict):
-    """开户 (核心字段)"""
-    trade_code: str
-    bank_id: str
-    bank_branch_id: str
-    broker_id: str
-    future_branch_id: str
-    trade_date: str
-    trade_time: str
-    bank_serial: str
-    trading_day: str
-    plate_serial: int
-    session_id: int
-    customer_name: str
-    bank_account: str
-    account_id: str
-    user_id: str
-    error_id: int
-    error_msg: str
-
-
-class CancelAccount(TypedDict):
-    """销户 (核心字段)"""
-    trade_code: str
-    bank_id: str
-    bank_branch_id: str
-    broker_id: str
-    future_branch_id: str
-    trade_date: str
-    trade_time: str
-    bank_serial: str
-    trading_day: str
-    plate_serial: int
-    session_id: int
-    customer_name: str
-    bank_account: str
-    account_id: str
-    user_id: str
-    error_id: int
-    error_msg: str
-
-
-class ChangeAccount(TypedDict):
-    """变更账户 (核心字段)"""
-    trade_code: str
-    bank_id: str
-    bank_branch_id: str
-    broker_id: str
-    future_branch_id: str
-    trade_date: str
-    trade_time: str
-    bank_serial: str
-    trading_day: str
-    plate_serial: int
-    session_id: int
-    customer_name: str
-    bank_account: str
-    account_id: str
-    user_id: str
-    error_id: int
-    error_msg: str
 
+class ResumeType(IntEnum):
+    ...
+class CapsuleStruct:
+    ...
+
+class DepthMarketData(CapsuleStruct):
+    ...
+
+class RspInfo(CapsuleStruct):
+    ...
+
+class RspUserLogin(CapsuleStruct):
+    ...
+
+class UserLogout(CapsuleStruct):
+    ...
+
+class ReqUserLogin(CapsuleStruct):
+    ...
+
+class ForQuoteRsp(CapsuleStruct):
+    ...
+
+class FensUserInfo(CapsuleStruct):
+    ...
+
+class MulticastInstrument(CapsuleStruct):
+    ...
+
+class QryMulticastInstrument(CapsuleStruct):
+    ...
+
+class RspAuthenticate(CapsuleStruct):
+    ...
+
+class UserPasswordUpdate(CapsuleStruct):
+    ...
+
+class TradingAccountPasswordUpdate(CapsuleStruct):
+    ...
+
+class RspGenUserCaptcha(CapsuleStruct):
+    ...
+
+class InputOrder(CapsuleStruct):
+    ...
+
+class InputExecOrderAction(CapsuleStruct):
+    ...
+
+class InputForQuote(CapsuleStruct):
+    ...
+
+class InputQuote(CapsuleStruct):
+    ...
+
+class InputQuoteAction(CapsuleStruct):
+    ...
+
+class InputBatchOrderAction(CapsuleStruct):
+    ...
+
+class InputOptionSelfClose(CapsuleStruct):
+    ...
+
+class InputOptionSelfCloseAction(CapsuleStruct):
+    ...
+
+class InputCombAction(CapsuleStruct):
+    ...
+
+class Order(CapsuleStruct):
+    ...
+
+class Trade(CapsuleStruct):
+    ...
+
+class InvestorPosition(CapsuleStruct):
+    ...
+
+class TradingAccount(CapsuleStruct):
+    ...
+
+class Investor(CapsuleStruct):
+    ...
+
+class TradingCode(CapsuleStruct):
+    ...
+
+class InstrumentMarginRate(CapsuleStruct):
+    ...
+
+class InstrumentCommissionRate(CapsuleStruct):
+    ...
+
+class UserSession(CapsuleStruct):
+    ...
+
+class Exchange(CapsuleStruct):
+    ...
+
+class Product(CapsuleStruct):
+    ...
+
+class Instrument(CapsuleStruct):
+    ...
+
+class SettlementInfo(CapsuleStruct):
+    ...
+
+class TransferBank(CapsuleStruct):
+    ...
+
+class InvestorPositionDetail(CapsuleStruct):
+    ...
+
+class Notice(CapsuleStruct):
+    ...
+
+class SettlementInfoConfirm(CapsuleStruct):
+    ...
+
+class InvestorPositionCombineDetail(CapsuleStruct):
+    ...
+
+class CFMMCTradingAccountKey(CapsuleStruct):
+    ...
+
+class EWarrantOffset(CapsuleStruct):
+    ...
+
+class InvestorProductGroupMargin(CapsuleStruct):
+    ...
+
+class ExchangeMarginRate(CapsuleStruct):
+    ...
+
+class ExchangeMarginRateAdjust(CapsuleStruct):
+    ...
+
+class ExchangeRate(CapsuleStruct):
+    ...
+
+class SecAgentACIDMap(CapsuleStruct):
+    ...
+
+class ProductExchRate(CapsuleStruct):
+    ...
+
+class ProductGroup(CapsuleStruct):
+    ...
+
+class MMInstrumentCommissionRate(CapsuleStruct):
+    ...
+
+class MMOptionInstrCommRate(CapsuleStruct):
+    ...
+
+class InstrumentOrderCommRate(CapsuleStruct):
+    ...
+
+class TradingNoticeInfo(CapsuleStruct):
+    ...
+
+class CFMMCTradingAccountToken(CapsuleStruct):
+    ...
+
+class ContractBank(CapsuleStruct):
+    ...
+
+class InputExecOrder(CapsuleStruct):
+    ...
+
+class ExecOrderAction(CapsuleStruct):
+    ...
+
+class QuoteAction(CapsuleStruct):
+    ...
+
+class BatchOrderAction(CapsuleStruct):
+    ...
+
+class OptionSelfCloseAction(CapsuleStruct):
+    ...
+
+class ParkedOrder(CapsuleStruct):
+    ...
+
+class ParkedOrderAction(CapsuleStruct):
+    ...
+
+class ErrorConditionalOrder(CapsuleStruct):
+    ...
+
+class SecAgentCheckMode(CapsuleStruct):
+    ...
+
+class SecAgentTradeInfo(CapsuleStruct):
+    ...
+
+class OptionInstrTradeCost(CapsuleStruct):
+    ...
+
+class OptionInstrCommRate(CapsuleStruct):
+    ...
+
+class ExecOrder(CapsuleStruct):
+    ...
+
+class ForQuote(CapsuleStruct):
+    ...
+
+class Quote(CapsuleStruct):
+    ...
+
+class OptionSelfClose(CapsuleStruct):
+    ...
+
+class InvestUnit(CapsuleStruct):
+    ...
+
+class CombInstrumentGuard(CapsuleStruct):
+    ...
+
+class CombAction(CapsuleStruct):
+    ...
+
+class TransferSerial(CapsuleStruct):
+    ...
+
+class OrderAction(CapsuleStruct):
+    ...
+
+class InstrumentStatus(CapsuleStruct):
+    ...
+
+class Bulletin(CapsuleStruct):
+    ...
+
+class TradingNotice(CapsuleStruct):
+    ...
+
+class BrokerTradingParams(CapsuleStruct):
+    ...
+
+class BrokerTradingAlgos(CapsuleStruct):
+    ...
+
+class QueryCFMMCTradingAccountToken(CapsuleStruct):
+    ...
+
+class ReqTransfer(CapsuleStruct):
+    ...
+
+class RspTransfer(CapsuleStruct):
+    ...
+
+class RspRepeal(CapsuleStruct):
+    ...
+
+class ReqRepeal(CapsuleStruct):
+    ...
+
+class ReqQueryAccount(CapsuleStruct):
+    ...
+
+class NotifyQueryAccount(CapsuleStruct):
+    ...
+
+class AccountRegister(CapsuleStruct):
+    ...
+
+class OffsetSetting(CapsuleStruct):
+    ...
+
+class CancelOffsetSetting(CapsuleStruct):
+    ...
+
+class InputOffsetSetting(CapsuleStruct):
+    ...
+
+class OpenAccount(CapsuleStruct):
+    ...
+
+class CancelAccount(CapsuleStruct):
+    ...
+
+class ChangeAccount(CapsuleStruct):
+    ...
+
+class CombPromotionParam(CapsuleStruct):
+    ...
+
+class SPBMFutureParameter(CapsuleStruct):
+    ...
+
+class SPBMOptionParameter(CapsuleStruct):
+    ...
+
+class SPBMIntraParameter(CapsuleStruct):
+    ...
+
+class SPBMInterParameter(CapsuleStruct):
+    ...
+
+class SPBMPortfDefinition(CapsuleStruct):
+    ...
+
+class SPBMInvestorPortfDef(CapsuleStruct):
+    ...
+
+class InvestorPortfMarginRatio(CapsuleStruct):
+    ...
+
+class InvestorProdSPBMDetail(CapsuleStruct):
+    ...
+
+class InvestorCommoditySPMMMargin(CapsuleStruct):
+    ...
+
+class InvestorCommodityGroupSPMMMargin(CapsuleStruct):
+    ...
+
+class SPMMInstParam(CapsuleStruct):
+    ...
+
+class CombLeg(CapsuleStruct):
+    ...
+
+class InvestorInfoCommRec(CapsuleStruct):
+    ...
+
+class InvestorPortfSetting(CapsuleStruct):
+    ...
+
+class InvestorProdRULEMargin(CapsuleStruct):
+    ...
+
+class RULEInterParameter(CapsuleStruct):
+    ...
+
+class RULEIntraParameter(CapsuleStruct):
+    ...
+
+class RULEInstrParameter(CapsuleStruct):
+    ...
+
+class InvestorProdRCAMSMargin(CapsuleStruct):
+    ...
+
+class RCAMSInvestorCombPosition(CapsuleStruct):
+    ...
+
+class RCAMSShortOptAdjustParam(CapsuleStruct):
+    ...
+
+class RCAMSInterParameter(CapsuleStruct):
+    ...
+
+class RCAMSIntraParameter(CapsuleStruct):
+    ...
+
+class RCAMSInstrParameter(CapsuleStruct):
+    ...
+
+class SPBMAddOnInterParameter(CapsuleStruct):
+    ...
+
+class RCAMSCombProductInfo(CapsuleStruct):
+    ...
+
+class RspGenUserText(CapsuleStruct):
+    ...
+
+class RspUserAuthMethod(CapsuleStruct):
+    ...
+
+class TraderOffer(CapsuleStruct):
+    ...
+
+class RiskSettleInvestPosition(CapsuleStruct):
+    ...
+
+class RiskSettleProductStatus(CapsuleStruct):
+    ...
+
+class ReqAuthenticate(CapsuleStruct):
+    ...
+
+class UserSystemInfo(CapsuleStruct):
+    ...
+
+class WechatUserSystemInfo(CapsuleStruct):
+    ...
+
+class ReqUserAuthMethod(CapsuleStruct):
+    ...
+
+class ReqGenUserCaptcha(CapsuleStruct):
+    ...
+
+class ReqGenUserText(CapsuleStruct):
+    ...
+
+class ReqUserLoginWithCaptcha(CapsuleStruct):
+    ...
+
+class ReqUserLoginWithText(CapsuleStruct):
+    ...
+
+class ReqUserLoginWithOTP(CapsuleStruct):
+    ...
+
+class InputOrderAction(CapsuleStruct):
+    ...
+
+class QryMaxOrderVolume(CapsuleStruct):
+    ...
+
+class RemoveParkedOrder(CapsuleStruct):
+    ...
+
+class RemoveParkedOrderAction(CapsuleStruct):
+    ...
+
+class QryOrder(CapsuleStruct):
+    ...
+
+class QryTrade(CapsuleStruct):
+    ...
+
+class QryInvestorPosition(CapsuleStruct):
+    ...
+
+class QryTradingAccount(CapsuleStruct):
+    ...
+
+class QryInvestor(CapsuleStruct):
+    ...
+
+class QryTradingCode(CapsuleStruct):
+    ...
+
+class QryInstrumentMarginRate(CapsuleStruct):
+    ...
+
+class QryInstrumentCommissionRate(CapsuleStruct):
+    ...
+
+class QryUserSession(CapsuleStruct):
+    ...
+
+class QryExchange(CapsuleStruct):
+    ...
+
+class QryProduct(CapsuleStruct):
+    ...
+
+class QryInstrument(CapsuleStruct):
+    ...
+
+class QryDepthMarketData(CapsuleStruct):
+    ...
+
+class QrySettlementInfo(CapsuleStruct):
+    ...
+
+class QryTransferBank(CapsuleStruct):
+    ...
+
+class QryInvestorPositionDetail(CapsuleStruct):
+    ...
+
+class QryNotice(CapsuleStruct):
+    ...
+
+class QrySettlementInfoConfirm(CapsuleStruct):
+    ...
+
+class QryInvestorPositionCombineDetail(CapsuleStruct):
+    ...
+
+class QryCFMMCTradingAccountKey(CapsuleStruct):
+    ...
+
+class QryEWarrantOffset(CapsuleStruct):
+    ...
+
+class QryInvestorProductGroupMargin(CapsuleStruct):
+    ...
+
+class QryExchangeMarginRate(CapsuleStruct):
+    ...
+
+class QryExchangeMarginRateAdjust(CapsuleStruct):
+    ...
+
+class QryExchangeRate(CapsuleStruct):
+    ...
+
+class QrySecAgentACIDMap(CapsuleStruct):
+    ...
+
+class QryProductExchRate(CapsuleStruct):
+    ...
+
+class QryProductGroup(CapsuleStruct):
+    ...
+
+class QryMMInstrumentCommissionRate(CapsuleStruct):
+    ...
+
+class QryMMOptionInstrCommRate(CapsuleStruct):
+    ...
+
+class QryInstrumentOrderCommRate(CapsuleStruct):
+    ...
+
+class QrySecAgentCheckMode(CapsuleStruct):
+    ...
+
+class QrySecAgentTradeInfo(CapsuleStruct):
+    ...
+
+class QryOptionInstrTradeCost(CapsuleStruct):
+    ...
+
+class QryOptionInstrCommRate(CapsuleStruct):
+    ...
+
+class QryExecOrder(CapsuleStruct):
+    ...
+
+class QryForQuote(CapsuleStruct):
+    ...
+
+class QryQuote(CapsuleStruct):
+    ...
+
+class QryOptionSelfClose(CapsuleStruct):
+    ...
+
+class QryInvestUnit(CapsuleStruct):
+    ...
+
+class QryCombInstrumentGuard(CapsuleStruct):
+    ...
+
+class QryCombAction(CapsuleStruct):
+    ...
+
+class QryTransferSerial(CapsuleStruct):
+    ...
+
+class QryAccountRegister(CapsuleStruct):
+    ...
+
+class QryContractBank(CapsuleStruct):
+    ...
+
+class QryParkedOrder(CapsuleStruct):
+    ...
+
+class QryParkedOrderAction(CapsuleStruct):
+    ...
+
+class QryTradingNotice(CapsuleStruct):
+    ...
+
+class QryBrokerTradingParams(CapsuleStruct):
+    ...
+
+class QryBrokerTradingAlgos(CapsuleStruct):
+    ...
+
+class QryClassifiedInstrument(CapsuleStruct):
+    ...
+
+class QryCombPromotionParam(CapsuleStruct):
+    ...
+
+class QryOffsetSetting(CapsuleStruct):
+    ...
+
+class QrySPBMFutureParameter(CapsuleStruct):
+    ...
+
+class QrySPBMOptionParameter(CapsuleStruct):
+    ...
+
+class QrySPBMIntraParameter(CapsuleStruct):
+    ...
+
+class QrySPBMInterParameter(CapsuleStruct):
+    ...
+
+class QrySPBMPortfDefinition(CapsuleStruct):
+    ...
+
+class QrySPBMInvestorPortfDef(CapsuleStruct):
+    ...
+
+class QryInvestorPortfMarginRatio(CapsuleStruct):
+    ...
+
+class QryInvestorProdSPBMDetail(CapsuleStruct):
+    ...
+
+class QryInvestorCommoditySPMMMargin(CapsuleStruct):
+    ...
+
+class QryInvestorCommodityGroupSPMMMargin(CapsuleStruct):
+    ...
+
+class QrySPMMInstParam(CapsuleStruct):
+    ...
+
+class QrySPMMProductParam(CapsuleStruct):
+    ...
+
+class QrySPBMAddOnInterParameter(CapsuleStruct):
+    ...
+
+class QryRCAMSCombProductInfo(CapsuleStruct):
+    ...
+
+class QryRCAMSInstrParameter(CapsuleStruct):
+    ...
+
+class QryRCAMSIntraParameter(CapsuleStruct):
+    ...
+
+class QryRCAMSInterParameter(CapsuleStruct):
+    ...
+
+class QryRCAMSShortOptAdjustParam(CapsuleStruct):
+    ...
+
+class QryRCAMSInvestorCombPosition(CapsuleStruct):
+    ...
+
+class QryInvestorProdRCAMSMargin(CapsuleStruct):
+    ...
+
+class QryRULEInstrParameter(CapsuleStruct):
+    ...
+
+class QryRULEIntraParameter(CapsuleStruct):
+    ...
+
+class QryRULEInterParameter(CapsuleStruct):
+    ...
+
+class QryInvestorProdRULEMargin(CapsuleStruct):
+    ...
+
+class QryInvestorPortfSetting(CapsuleStruct):
+    ...
+
+class QryInvestorInfoCommRec(CapsuleStruct):
+    ...
+
+class QryCombLeg(CapsuleStruct):
+    ...
+
+class QryTraderOffer(CapsuleStruct):
+    ...
+
+class QryRiskSettleInvestPosition(CapsuleStruct):
+    ...
+
+class QryRiskSettleProductStatus(CapsuleStruct):
+    ...
+
+class SPMMProductParam(CapsuleStruct):
+    ...
 # =============================================================================
 # PyMdSpi 和 MdApi 类定义（仅在类型检查时可用）
 # 这些类由 C++ 模块提供，这里仅定义类型提示用于 IDE 和 mypy
 # =============================================================================
 
-class PyMdSpi:
+class PyMdSpi(ABC):
     """
-    CTP PC版行情回调接口基类
+    CTP PC版行情回调接口协议
 
-    方案3说明：
-    - 此类仅用于类型提示
-    - 实际使用时不需要继承任何基类
-    - 只需实现对应的方法即可
+    使用 Protocol 的优势：
+    - 可以继承此类获得类型提示和 IDE 自动完成
+    - 也可以不继承，只需实现相应方法即可（鸭子类型）
+    - IDE 类型检查更准确
+
+    使用示例：
+        # 方式1：继承（推荐，获得完整类型提示）
+        class MySpi(PyMdSpi):
+            def on_front_connected(self) -> None: ...
+            # 实现其他方法...
+
+        # 方式2：不继承（鸭子类型）
+        class MySpi:
+            def on_front_connected(self) -> None: ...
+            # 实现其他方法...
+
+        api.register_spi(MySpi())  # 两种方式类型检查都通过
     """
     def __init__(self) -> None: ...
 
-    def on_front_connected(self) -> None: ...
-    def on_front_disconnected(self, reason: int) -> None: ...
-    def on_heart_beat_warning(self, time_lapse: int) -> None: ...
-    def on_rsp_user_login(self, rsp_user_login: RspUserLogin, rsp_info: RspInfo, request_id: int, is_last: bool) -> None: ...
-    def on_rsp_user_logout(self, user_logout: UserLogout, rsp_info: RspInfo, request_id: int, is_last: bool) -> None: ...
-    def on_rsp_error(self, rsp_info: RspInfo, request_id: int, is_last: bool) -> None: ...
-    def on_rsp_sub_market_data(self, instrument_id: Optional[str], rsp_info: RspInfo, request_id: int, is_last: bool) -> None: ...
-    def on_rsp_un_sub_market_data(self, instrument_id: Optional[str], rsp_info: RspInfo, request_id: int, is_last: bool) -> None: ...
-    def on_rsp_sub_for_quote_rsp(self, instrument_id: Optional[str], rsp_info: RspInfo, request_id: int, is_last: bool) -> None: ...
-    def on_rsp_un_sub_for_quote_rsp(self, instrument_id: Optional[str], rsp_info: RspInfo, request_id: int, is_last: bool) -> None: ...
-    def on_rtn_depth_market_data(self, depth_market_data: DepthMarketData) -> None: ...
-    def on_rtn_for_quote_rsp(self, for_quote_rsp: ForQuoteRsp) -> None: ...
-    def on_rsp_qry_multicast_instrument(self, multicast_instrument: Optional[MulticastInstrument], rsp_info: RspInfo, request_id: int, is_last: bool) -> None: ...
+    def on_front_connected(self) -> None:
+        pass
+    def on_front_disconnected(self, reason: int) -> None:
+        pass
+    def on_heart_beat_warning(self, time_lapse: int) -> None:
+        pass
+    def on_rsp_user_login(self, rsp_user_login: RspUserLogin, rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_user_logout(self, user_logout: UserLogout, rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_error(self, rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_sub_market_data(self, instrument_id: Optional[str], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_un_sub_market_data(self, instrument_id: Optional[str], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_sub_for_quote_rsp(self, instrument_id: Optional[str], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_un_sub_for_quote_rsp(self, instrument_id: Optional[str], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rtn_depth_market_data(self, depth_market_data: DepthMarketData) -> None:
+        pass
+    def on_rtn_for_quote_rsp(self, for_quote_rsp: ForQuoteRsp) -> None:
+        pass
+    def on_rsp_qry_multicast_instrument(self, multicast_instrument: Optional[MulticastInstrument], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+
+
+class PyTradeSpi(ABC):
+    """
+    CTP PC版交易回调接口协议
+
+    使用示例：
+        # 方式1：继承（推荐，获得完整类型提示）
+        class MyTradeSpi(PyTradeSpi):
+            def on_front_connected(self) -> None: ...
+            # 实现其他方法...
+
+        # 方式2：不继承（鸭子类型）
+        class MyTradeSpi:
+            def on_front_connected(self) -> None: ...
+            # 实现其他方法...
+
+        api.register_spi(MyTradeSpi())  # 两种方式类型检查都通过
+    """
+
+    # 连接相关回调
+
+    def on_front_connected(self) -> None:
+        pass
+    def on_front_disconnected(self, reason: int) -> None:
+        pass
+    def on_heart_beat_warning(self, time_lapse: int) -> None:
+        pass
+    def on_rsp_authenticate(self, rsp_authenticate: Optional[RspAuthenticate], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_user_login(self, rsp_user_login: Optional[RspUserLogin], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_user_logout(self, user_logout: Optional[UserLogout], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_user_password_update(self, user_password_update: Optional[UserPasswordUpdate], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_trading_account_password_update(self, trading_account_password_update: Optional[TradingAccountPasswordUpdate], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_user_auth_method(self, rsp_user_auth_method: Optional[str], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_gen_user_captcha(self, rsp_gen_user_captcha: Optional[RspGenUserCaptcha], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_gen_user_text(self, rsp_gen_user_text: Optional[str], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_order_insert(self, input_order: Optional[InputOrder], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_parked_order_insert(self, parked_order: Optional[ParkedOrder], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_parked_order_action(self, parked_order_action: Optional[ParkedOrderAction], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_order_action(self, input_order_action: Optional[InputOrderAction], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_max_order_volume(self, qry_max_order_volume: Optional[QryMaxOrderVolume], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_settlement_info_confirm(self, settlement_info_confirm: Optional[SettlementInfoConfirm], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_remove_parked_order(self, remove_parked_order: Optional[RemoveParkedOrder], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_remove_parked_order_action(self, remove_parked_order_action: Optional[RemoveParkedOrderAction], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_exec_order_insert(self, input_exec_order: Optional[InputExecOrder], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_exec_order_action(self, input_exec_order_action: Optional[InputExecOrderAction], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_for_quote_insert(self, input_for_quote: Optional[InputForQuote], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_quote_insert(self, input_quote: Optional[InputQuote], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_quote_action(self, input_quote_action: Optional[InputQuoteAction], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_batch_order_action(self, input_batch_order_action: Optional[InputBatchOrderAction], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_option_self_close_insert(self, input_option_self_close: Optional[InputOptionSelfClose], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_option_self_close_action(self, input_option_self_close_action: Optional[InputOptionSelfCloseAction], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_comb_action_insert(self, input_comb_action: Optional[InputCombAction], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_order(self, order: Optional[Order], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_trade(self, trade: Optional[Trade], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_investor_position(self, investor_position: Optional[InvestorPosition], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_trading_account(self, trading_account: Optional[TradingAccount], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_investor(self, investor: Optional[Investor], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_trading_code(self, trading_code: Optional[TradingCode], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_instrument_margin_rate(self, instrument_margin_rate: Optional[InstrumentMarginRate], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_instrument_commission_rate(self, instrument_commission_rate: Optional[InstrumentCommissionRate], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_user_session(self, user_session: Optional[UserSession], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_exchange(self, exchange: Optional[Exchange], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_product(self, product: Optional[Product], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_instrument(self, instrument: Optional[Instrument], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_depth_market_data(self, depth_market_data: Optional[DepthMarketData], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_settlement_info(self, settlement_info: Optional[SettlementInfo], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_transfer_bank(self, transfer_bank: Optional[TransferBank], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_investor_position_detail(self, investor_position_detail: Optional[InvestorPositionDetail], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_notice(self, notice: Optional[Notice], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_settlement_info_confirm(self, settlement_info_confirm: Optional[SettlementInfoConfirm], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_investor_position_combine_detail(self, investor_position_combine_detail: Optional[InvestorPositionCombineDetail], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_cfmmc_trading_account_key(self, cfmmc_trading_account_key: Optional[CFMMCTradingAccountKey], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_ewarrant_offset(self, ewarrant_offset: Optional[EWarrantOffset], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_investor_product_group_margin(self, investor_product_group_margin: Optional[InvestorProductGroupMargin], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_exchange_margin_rate(self, exchange_margin_rate: Optional[ExchangeMarginRate], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_exchange_margin_rate_adjust(self, exchange_margin_rate_adjust: Optional[ExchangeMarginRateAdjust], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_exchange_rate(self, exchange_rate: Optional[ExchangeRate], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_sec_agent_acid_map(self, sec_agent_acid_map: Optional[SecAgentACIDMap], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_product_exch_rate(self, product_exch_rate: Optional[ProductExchRate], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_product_group(self, product_group: Optional[ProductGroup], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_mm_instrument_commission_rate(self, mm_instrument_commission_rate: Optional[MMInstrumentCommissionRate], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_mm_option_instr_comm_rate(self, mm_option_instr_comm_rate: Optional[MMOptionInstrCommRate], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_instrument_order_comm_rate(self, instrument_order_comm_rate: Optional[InstrumentOrderCommRate], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_sec_agent_trading_account(self, trading_account: Optional[TradingAccount], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_sec_agent_check_mode(self, sec_agent_check_mode: Optional[SecAgentCheckMode], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_sec_agent_trade_info(self, sec_agent_trade_info: Optional[SecAgentTradeInfo], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_option_instr_trade_cost(self, option_instr_trade_cost: Optional[OptionInstrTradeCost], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_option_instr_comm_rate(self, option_instr_comm_rate: Optional[OptionInstrCommRate], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_exec_order(self, exec_order: Optional[ExecOrder], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_for_quote(self, for_quote: Optional[ForQuote], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_quote(self, quote: Optional[Quote], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_option_self_close(self, option_self_close: Optional[OptionSelfClose], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_invest_unit(self, invest_unit: Optional[InvestUnit], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_comb_instrument_guard(self, comb_instrument_guard: Optional[CombInstrumentGuard], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_comb_action(self, comb_action: Optional[CombAction], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_transfer_serial(self, transfer_serial: Optional[TransferSerial], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_account_register(self, account_register: Optional[AccountRegister], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_error(self, rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rtn_order(self, order: Order) -> None:
+        pass
+    def on_rtn_trade(self, trade: Trade) -> None:
+        pass
+    def on_err_rtn_order_insert(self, input_order: Optional[InputOrder], rsp_info: RspInfo) -> None:
+        pass
+    def on_err_rtn_order_action(self, order_action: Optional[OrderAction], rsp_info: RspInfo) -> None:
+        pass
+    def on_rtn_instrument_status(self, instrument_status: InstrumentStatus) -> None:
+        pass
+    def on_rtn_bulletin(self, bulletin: Bulletin) -> None:
+        pass
+    def on_rtn_trading_notice(self, trading_notice_info: TradingNoticeInfo) -> None:
+        pass
+    def on_rtn_error_conditional_order(self, error_conditional_order: ErrorConditionalOrder) -> None:
+        pass
+    def on_rtn_exec_order(self, exec_order: ExecOrder) -> None:
+        pass
+    def on_err_rtn_exec_order_insert(self, input_exec_order: Optional[InputExecOrder], rsp_info: RspInfo) -> None:
+        pass
+    def on_err_rtn_exec_order_action(self, exec_order_action: Optional[ExecOrderAction], rsp_info: RspInfo) -> None:
+        pass
+    def on_err_rtn_for_quote_insert(self, input_for_quote: Optional[InputForQuote], rsp_info: RspInfo) -> None:
+        pass
+    def on_rtn_quote(self, quote: Quote) -> None:
+        pass
+    def on_err_rtn_quote_insert(self, input_quote: Optional[InputQuote], rsp_info: RspInfo) -> None:
+        pass
+    def on_err_rtn_quote_action(self, quote_action: Optional[QuoteAction], rsp_info: RspInfo) -> None:
+        pass
+    def on_rtn_for_quote_rsp(self, for_quote_rsp: ForQuoteRsp) -> None:
+        pass
+    def on_rtn_cfmmc_trading_account_token(self, cfmmc_trading_account_token: CFMMCTradingAccountToken) -> None:
+        pass
+    def on_err_rtn_batch_order_action(self, batch_order_action: Optional[BatchOrderAction], rsp_info: RspInfo) -> None:
+        pass
+    def on_rtn_option_self_close(self, option_self_close: OptionSelfClose) -> None:
+        pass
+    def on_err_rtn_option_self_close_insert(self, input_option_self_close: Optional[InputOptionSelfClose], rsp_info: RspInfo) -> None:
+        pass
+    def on_err_rtn_option_self_close_action(self, option_self_close_action: Optional[OptionSelfCloseAction], rsp_info: RspInfo) -> None:
+        pass
+    def on_rtn_comb_action(self, comb_action: CombAction) -> None:
+        pass
+    def on_err_rtn_comb_action_insert(self, input_comb_action: Optional[InputCombAction], rsp_info: RspInfo) -> None:
+        pass
+    def on_rsp_qry_contract_bank(self, contract_bank: Optional[ContractBank], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_parked_order(self, parked_order: Optional[ParkedOrder], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_parked_order_action(self, parked_order_action: Optional[ParkedOrderAction], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_trading_notice(self, trading_notice: Optional[TradingNotice], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_broker_trading_params(self, broker_trading_params: Optional[BrokerTradingParams], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_broker_trading_algos(self, broker_trading_algos: Optional[BrokerTradingAlgos], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_query_cfmmc_trading_account_token(self, query_cfmmc_trading_account_token: Optional[QueryCFMMCTradingAccountToken], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rtn_from_bank_to_future_by_bank(self, rsp_transfer: RspTransfer) -> None:
+        pass
+    def on_rtn_from_future_to_bank_by_bank(self, rsp_transfer: RspTransfer) -> None:
+        pass
+    def on_rtn_repeal_from_bank_to_future_by_bank(self, rsp_repeal: RspRepeal) -> None:
+        pass
+    def on_rtn_repeal_from_future_to_bank_by_bank(self, rsp_repeal: RspRepeal) -> None:
+        pass
+    def on_rtn_from_bank_to_future_by_future(self, rsp_transfer: RspTransfer) -> None:
+        pass
+    def on_rtn_from_future_to_bank_by_future(self, rsp_transfer: RspTransfer) -> None:
+        pass
+    def on_rtn_repeal_from_bank_to_future_by_future_manual(self, rsp_repeal: RspRepeal) -> None:
+        pass
+    def on_rtn_repeal_from_future_to_bank_by_future_manual(self, rsp_repeal: RspRepeal) -> None:
+        pass
+    def on_rtn_query_bank_balance_by_future(self, notify_query_account: NotifyQueryAccount) -> None:
+        pass
+    def on_err_rtn_bank_to_future_by_future(self, req_transfer: Optional[ReqTransfer], rsp_info: RspInfo) -> None:
+        pass
+    def on_err_rtn_future_to_bank_by_future(self, req_transfer: Optional[ReqTransfer], rsp_info: RspInfo) -> None:
+        pass
+    def on_err_rtn_repeal_bank_to_future_by_future_manual(self, req_repeal: Optional[ReqRepeal], rsp_info: RspInfo) -> None:
+        pass
+    def on_err_rtn_repeal_future_to_bank_by_future_manual(self, req_repeal: Optional[ReqRepeal], rsp_info: RspInfo) -> None:
+        pass
+    def on_err_rtn_query_bank_balance_by_future(self, req_query_account: Optional[ReqQueryAccount], rsp_info: RspInfo) -> None:
+        pass
+    def on_rtn_repeal_from_bank_to_future_by_future(self, rsp_repeal: RspRepeal) -> None:
+        pass
+    def on_rtn_repeal_from_future_to_bank_by_future(self, rsp_repeal: RspRepeal) -> None:
+        pass
+    def on_rsp_from_bank_to_future_by_future(self, req_transfer: Optional[ReqTransfer], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_from_future_to_bank_by_future(self, req_transfer: Optional[ReqTransfer], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_query_bank_account_money_by_future(self, req_query_account: Optional[ReqQueryAccount], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rtn_open_account_by_bank(self, open_account: OpenAccount) -> None:
+        pass
+    def on_rtn_cancel_account_by_bank(self, cancel_account: CancelAccount) -> None:
+        pass
+    def on_rtn_change_account_by_bank(self, change_account: ChangeAccount) -> None:
+        pass
+    def on_rsp_qry_classified_instrument(self, instrument: Optional[Instrument], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_comb_promotion_param(self, comb_promotion_param: Optional[CombPromotionParam], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_spbm_future_parameter(self, spbm_future_parameter: Optional[SPBMFutureParameter], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_spbm_option_parameter(self, spbm_option_parameter: Optional[SPBMOptionParameter], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_spbm_intra_parameter(self, spbm_intra_parameter: Optional[SPBMIntraParameter], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_spbm_inter_parameter(self, spbm_inter_parameter: Optional[SPBMInterParameter], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_spbm_portf_definition(self, spbm_portf_definition: Optional[SPBMPortfDefinition], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_spbm_investor_portf_def(self, spbm_investor_portf_def: Optional[SPBMInvestorPortfDef], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_investor_portf_margin_ratio(self, investor_portf_margin_ratio: Optional[InvestorPortfMarginRatio], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_investor_prod_spbm_detail(self, investor_prod_spbm_detail: Optional[InvestorProdSPBMDetail], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_investor_commodity_spmm_margin(self, investor_commodity_spmm_margin: Optional[InvestorCommoditySPMMMargin], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_investor_commodity_group_spmm_margin(self, investor_commodity_group_spmm_margin: Optional[InvestorCommodityGroupSPMMMargin], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_spmm_inst_param(self, spmm_inst_param: Optional[SPMMInstParam], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_spmm_product_param(self, spmm_product_param: Optional[SPMMProductParam], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_spbm_add_on_inter_parameter(self, spbm_add_on_inter_parameter: Optional[SPBMAddOnInterParameter], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_rcams_comb_product_info(self, rcams_comb_product_info: Optional[RCAMSCombProductInfo], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_rcams_instr_parameter(self, rcams_instr_parameter: Optional[RCAMSInstrParameter], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_rcams_intra_parameter(self, rcams_intra_parameter: Optional[RCAMSIntraParameter], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_rcams_inter_parameter(self, rcams_inter_parameter: Optional[RCAMSInterParameter], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_rcams_short_opt_adjust_param(self, rcams_short_opt_adjust_param: Optional[RCAMSShortOptAdjustParam], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_rcams_investor_comb_position(self, rcams_investor_comb_position: Optional[RCAMSInvestorCombPosition], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_investor_prod_rcams_margin(self, investor_prod_rcams_margin: Optional[InvestorProdRCAMSMargin], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_rule_instr_parameter(self, rule_instr_parameter: Optional[RULEInstrParameter], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_rule_intra_parameter(self, rule_intra_parameter: Optional[RULEIntraParameter], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_rule_inter_parameter(self, rule_inter_parameter: Optional[RULEInterParameter], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_investor_prod_rule_margin(self, investor_prod_rule_margin: Optional[InvestorProdRULEMargin], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_investor_portf_setting(self, investor_portf_setting: Optional[InvestorPortfSetting], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_investor_info_comm_rec(self, investor_info_comm_rec: Optional[InvestorInfoCommRec], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_comb_leg(self, comb_leg: Optional[CombLeg], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_offset_setting(self, input_offset_setting: Optional[InputOffsetSetting], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_cancel_offset_setting(self, input_offset_setting: Optional[InputOffsetSetting], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rtn_offset_setting(self, offset_setting: OffsetSetting) -> None:
+        pass
+    def on_err_rtn_offset_setting(self, input_offset_setting: Optional[InputOffsetSetting], rsp_info: RspInfo) -> None:
+        pass
+    def on_err_rtn_cancel_offset_setting(self, input_offset_setting: Optional[CancelOffsetSetting], rsp_info: RspInfo) -> None:
+        pass
+    def on_rsp_qry_offset_setting(self, offset_setting: Optional[OffsetSetting], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_trader_offer(self, trader_offer: Optional[TraderOffer], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_risk_settle_invest_position(self, risk_settle_invest_position: Optional[RiskSettleInvestPosition], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+    def on_rsp_qry_risk_settle_product_status(self, risk_settle_product_status: Optional[RiskSettleProductStatus], rsp_info: RspInfo, request_id: int, is_last: bool) -> None:
+        pass
+
+
+
+
+
+
+
 
 class MdApi:
     """
@@ -1643,7 +1113,7 @@ class MdApi:
     def init(self) -> None: ...
     def join(self) -> int: ...
     def get_trading_day(self) -> str: ...
-    def register_front(self, front_address: str) -> None: ...
+    def register_front(self, front_address: Union[str, list[str], np.ndarray]) -> None: ...
     def register_name_server(self, ns_address: str) -> None: ...
     def register_fens_user_info(self, fens_user_info: FensUserInfo) -> None: ...
     def register_spi(self, spi: PyMdSpi) -> None: ...
@@ -1662,59 +1132,1678 @@ class MdApi:
 # 这些类由 C++ 模块提供，这里仅定义类型提示用于 IDE 和 mypy
 # =============================================================================
 
-class PyTradeSpi:
+class TradeApi:
+    """CTP 交易 API 类
+
+    对应 C++ 的 CThostFtdcTraderApi 类，提供交易相关的所有接口方法。
     """
-    CTP PC版交易回调接口基类
 
-    方案3说明：
-    - 此类仅用于类型提示
-    - 实际使用时不需要继承任何基类
-    - 只需实现对应的方法即可
-    """
-    def __init__(self) -> None: ...
+    # -------------------------------------------------------------------------
+    # 静态方法和创建相关
+    # -------------------------------------------------------------------------
 
-    # 连接相关 (3个)
-    def on_front_connected(self) -> None: ...
-    def on_front_disconnected(self, reason: int) -> None: ...
-    def on_heart_beat_warning(self, time_lapse: int) -> None: ...
+    @staticmethod
+    def create_ftdc_trader_api(flow_path: str = "", is_using_udp: bool = False) -> "TradeApi":
+        """创建 TraderApi 实例
 
-    # 认证登录相关 (5个)
-    def on_rsp_authenticate(self, rsp_authenticate: Optional["RspAuthenticate"], rsp_info: "RspInfo", request_id: int, is_last: bool) -> None: ...
-    def on_rsp_user_login(self, rsp_user_login: Optional["RspUserLogin"], rsp_info: "RspInfo", request_id: int, is_last: bool) -> None: ...
-    def on_rsp_user_logout(self, user_logout: Optional["UserLogout"], rsp_info: "RspInfo", request_id: int, is_last: bool) -> None: ...
-    def on_rsp_user_password_update(self, user_password_update: Optional["UserPasswordUpdate"], rsp_info: "RspInfo", request_id: int, is_last: bool) -> None: ...
-    def on_rsp_trading_account_password_update(self, trading_account_password_update: Optional["TradingAccountPasswordUpdate"], rsp_info: "RspInfo", request_id: int, is_last: bool) -> None: ...
+        Args:
+            flow_path: 存贮订阅信息文件的目录，默认为当前目录
+            is_using_udp: 是否使用 UDP（已废弃，仅用于兼容）
 
-    # 报单相关 (8个)
-    def on_rsp_order_insert(self, input_order: Optional["InputOrder"], rsp_info: "RspInfo", request_id: int, is_last: bool) -> None: ...
-    def on_rsp_parked_order_insert(self, parked_order: Optional["ParkedOrder"], rsp_info: "RspInfo", request_id: int, is_last: bool) -> None: ...
-    def on_rsp_parked_order_action(self, parked_order_action: Optional["ParkedOrderAction"], rsp_info: "RspInfo", request_id: int, is_last: bool) -> None: ...
-    def on_rsp_order_action(self, input_order_action: Optional["InputOrderAction"], rsp_info: "RspInfo", request_id: int, is_last: bool) -> None: ...
-    def on_rtn_order(self, order: "Order") -> None: ...
-    def on_rtn_trade(self, trade: "Trade") -> None: ...
-    def on_err_rtn_order_insert(self, input_order: Optional["InputOrder"], rsp_info: "RspInfo") -> None: ...
-    def on_err_rtn_order_action(self, order_action: Optional["OrderAction"], rsp_info: "RspInfo") -> None: ...
+        Returns:
+            创建出的 TraderApi 实例
+        """
+        ...
 
-    # 查询相关 (10个)
-    def on_rsp_qry_order(self, order: Optional["Order"], rsp_info: "RspInfo", request_id: int, is_last: bool) -> None: ...
-    def on_rsp_qry_trade(self, trade: Optional["Trade"], rsp_info: "RspInfo", request_id: int, is_last: bool) -> None: ...
-    def on_rsp_qry_investor_position(self, investor_position: Optional["InvestorPosition"], rsp_info: "RspInfo", request_id: int, is_last: bool) -> None: ...
-    def on_rsp_qry_trading_account(self, trading_account: Optional["TradingAccount"], rsp_info: "RspInfo", request_id: int, is_last: bool) -> None: ...
-    def on_rsp_qry_investor(self, investor: Optional["Investor"], rsp_info: "RspInfo", request_id: int, is_last: bool) -> None: ...
-    def on_rsp_qry_trading_code(self, trading_code: Optional["TradingCode"], rsp_info: "RspInfo", request_id: int, is_last: bool) -> None: ...
-    def on_rsp_qry_instrument_margin_rate(self, instrument_margin_rate: Optional["InstrumentMarginRate"], rsp_info: "RspInfo", request_id: int, is_last: bool) -> None: ...
-    def on_rsp_qry_instrument_commission_rate(self, instrument_commission_rate: Optional["InstrumentCommissionRate"], rsp_info: "RspInfo", request_id: int, is_last: bool) -> None: ...
-    def on_rsp_qry_instrument(self, instrument: Optional["Instrument"], rsp_info: "RspInfo", request_id: int, is_last: bool) -> None: ...
-    def on_rsp_qry_settlement_info(self, settlement_info: Optional["SettlementInfo"], rsp_info: "RspInfo", request_id: int, is_last: bool) -> None: ...
+    @staticmethod
+    def get_api_version() -> str:
+        """获取 API 的版本信息
 
-    # 错误和状态 (2个)
-    def on_rsp_error(self, rsp_info: "RspInfo", request_id: int, is_last: bool) -> None: ...
-    def on_rtn_instrument_status(self, instrument_status: "InstrumentStatus") -> None: ...
+        Returns:
+            获取到的版本号
+        """
+        ...
 
+    # -------------------------------------------------------------------------
+    # 初始化和连接相关
+    # -------------------------------------------------------------------------
 
-# =============================================================================
-# 字符串池监控和清理工具函数
-# =============================================================================
+    def init(self) -> None:
+        """初始化
+
+        初始化运行环境，只有调用后，接口才开始工作。
+        """
+        ...
+
+    def join(self) -> int:
+        """等待接口线程结束运行
+
+        Returns:
+            线程退出代码
+        """
+        ...
+
+    def get_trading_day(self) -> str:
+        """获取当前交易日
+
+        Returns:
+            获取到的交易日（只有登录成功后，才能得到正确的交易日）
+        """
+        ...
+
+    def get_front_info(self) -> dict:
+        """获取已连接的前置的信息
+
+        Returns:
+            前置信息字典，包含以下字段：
+            - front_id: 前置编号
+            - broker_id: 经纪公司代码
+            - broker_name: 经纪公司名称
+            - broker_type: 经纪公司类型
+            - broker_version: 经纪公司版本
+            - link_status: 连接状态
+            - link_time: 连接时间
+            - last_heartbeat_time: 最后心跳时间
+            - user_ip_count: 用户IP数量
+            - reserved: 保留字段
+        """
+        ...
+
+    def register_front(self, addresses: Union[str , list[str] , np.ndarray]) -> None:
+        """注册前置机网络地址
+
+        Args:
+            addresses: 前置机网络地址，支持以下格式：
+                - str: 单个地址，如 "tcp://127.0.0.1:17001"
+                - list[str]: 地址列表
+                - numpy.ndarray: 字符串类型的 NumPy 数组
+
+        网络地址的格式为："protocol://ipaddress:port"，如："tcp://127.0.0.1:17001"
+        """
+        ...
+
+    def register_name_server(self, addresses: Union[str , list[str] , np.ndarray]) -> None:
+        """注册名字服务器网络地址
+
+        Args:
+            addresses: 名字服务器网络地址，格式同 register_front
+
+        RegisterNameServer 优先于 RegisterFront。
+        """
+        ...
+
+    def register_fens_user_info(self, fens_user_info: FensUserInfo) -> None:
+        """注册名字服务器用户信息
+
+        Args:
+            fens_user_info: 用户信息
+        """
+        ...
+
+    def register_spi(self, spi: PyTradeSpi) -> None:
+        """注册回调接口
+
+        Args:
+            spi: 派生自回调接口类的实例
+        """
+        ...
+
+    def subscribe_private_topic(self, resume_type: ResumeType) -> None:
+        """订阅私有流
+
+        Args:
+            resume_type: 私有流重传方式
+                - ResumeType.RESTART: 从本交易日开始重传
+                - ResumeType.RESUME: 从上次收到的续传
+                - ResumeType.QUICK: 只传送登录后私有流的内容
+
+        该方法要在 Init 方法前调用。若不调用则不会收到私有流的数据。
+        """
+        ...
+
+    def subscribe_public_topic(self, resume_type: ResumeType) -> None:
+        """订阅公共流
+
+        Args:
+            resume_type: 公共流重传方式
+                - ResumeType.RESTART: 从本交易日开始重传
+                - ResumeType.RESUME: 从上次收到的续传
+                - ResumeType.QUICK: 只传送登录后公共流的内容
+                - ResumeType.NONE: 取消订阅公共流
+
+        该方法要在 Init 方法前调用。若不调用则不会收到公共流的数据。
+        """
+        ...
+
+    def release(self) -> None:
+        """删除接口对象本身
+
+        不再使用本接口对象时，调用该函数删除接口对象。
+        """
+        ...
+
+    # -------------------------------------------------------------------------
+    # 认证登录相关
+    # -------------------------------------------------------------------------
+
+    def req_authenticate(self, req_authenticate: ReqAuthenticate, request_id: int) -> int:
+        """客户端认证请求
+
+        Args:
+            req_authenticate: 认证请求参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def register_user_system_info(self, user_system_info: UserSystemInfo) -> int:
+        """注册用户终端信息，用于中继服务器多连接模式
+
+        需要在终端认证成功后，用户登录前调用该接口。
+
+        Args:
+            user_system_info: 用户系统信息
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def submit_user_system_info(self, user_system_info: UserSystemInfo) -> int:
+        """上报用户终端信息，用于中继服务器操作员登录模式
+
+        操作员登录后，可以多次调用该接口上报客户信息。
+
+        Args:
+            user_system_info: 用户系统信息
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def register_wechat_user_system_info(self, user_system_info: WechatUserSystemInfo) -> int:
+        """注册用户终端信息，用于中继服务器多连接模式
+
+        用于微信小程序等应用上报信息。
+
+        Args:
+            user_system_info: 微信用户系统信息
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def submit_wechat_user_system_info(self, user_system_info: WechatUserSystemInfo) -> int:
+        """上报用户终端信息，用于中继服务器操作员登录模式
+
+        用于微信小程序等应用上报信息。
+
+        Args:
+            user_system_info: 微信用户系统信息
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_user_login(self, req_user_login: ReqUserLogin, request_id: int) -> int:
+        """用户登录请求
+
+        Args:
+            req_user_login: 登录请求参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_user_logout(self, user_logout: UserLogout, request_id: int) -> int:
+        """登出请求
+
+        Args:
+            user_logout: 登出参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_user_password_update(self, user_password_update: UserPasswordUpdate, request_id: int) -> int:
+        """用户口令更新请求
+
+        Args:
+            user_password_update: 口令更新参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_trading_account_password_update(self, trading_account_password_update: TradingAccountPasswordUpdate, request_id: int) -> int:
+        """资金账户口令更新请求
+
+        Args:
+            trading_account_password_update: 资金账户口令更新参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_user_auth_method(self, req_user_auth_method: ReqUserAuthMethod, request_id: int) -> int:
+        """查询用户当前支持的认证模式
+
+        Args:
+            req_user_auth_method: 认证方法查询请求参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_gen_user_captcha(self, req_gen_user_captcha: ReqGenUserCaptcha, request_id: int) -> int:
+        """用户发出获取图形验证码请求
+
+        Args:
+            req_gen_user_captcha: 图形验证码请求参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_gen_user_text(self, req_gen_user_text: ReqGenUserText, request_id: int) -> int:
+        """用户发出获取短信验证码请求
+
+        Args:
+            req_gen_user_text: 短信验证码请求参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_user_login_with_captcha(self, req_user_login_with_captcha: ReqUserLoginWithCaptcha, request_id: int) -> int:
+        """用户发出带有图片验证码的登陆请求
+
+        Args:
+            req_user_login_with_captcha: 带验证码的登录请求参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_user_login_with_text(self, req_user_login_with_text: ReqUserLoginWithText, request_id: int) -> int:
+        """用户发出带有短信验证码的登陆请求
+
+        Args:
+            req_user_login_with_text: 带短信验证码的登录请求参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_user_login_with_otp(self, req_user_login_with_otp: ReqUserLoginWithOTP, request_id: int) -> int:
+        """用户发出带有动态口令的登陆请求
+
+        Args:
+            req_user_login_with_otp: 带动态口令的登录请求参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    # -------------------------------------------------------------------------
+    # 报单相关
+    # -------------------------------------------------------------------------
+
+    def req_order_insert(self, input_order: InputOrder, request_id: int) -> int:
+        """报单录入请求
+
+        Args:
+            input_order: 报单录入参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_parked_order_insert(self, parked_order: ParkedOrder, request_id: int) -> int:
+        """预埋单录入请求
+
+        Args:
+            parked_order: 预埋单参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_parked_order_action(self, parked_order_action: ParkedOrderAction, request_id: int) -> int:
+        """预埋撤单录入请求
+
+        Args:
+            parked_order_action: 预埋撤单参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_order_action(self, input_order_action: InputOrderAction, request_id: int) -> int:
+        """报单操作请求
+
+        Args:
+            input_order_action: 报单操作参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_max_order_volume(self, qry_max_order_volume: QryMaxOrderVolume, request_id: int) -> int:
+        """查询最大报单数量请求
+
+        Args:
+            qry_max_order_volume: 最大报单数量查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_settlement_info_confirm(self, settlement_info_confirm: SettlementInfoConfirm, request_id: int) -> int:
+        """投资者结算结果确认
+
+        Args:
+            settlement_info_confirm: 结算信息确认参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_remove_parked_order(self, remove_parked_order: RemoveParkedOrder, request_id: int) -> int:
+        """请求删除预埋单
+
+        Args:
+            remove_parked_order: 删除预埋单参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_remove_parked_order_action(self, remove_parked_order_action: RemoveParkedOrderAction, request_id: int) -> int:
+        """请求删除预埋撤单
+
+        Args:
+            remove_parked_order_action: 删除预埋撤单参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_batch_order_action(self, input_batch_order_action: InputBatchOrderAction, request_id: int) -> int:
+        """批量报单操作请求
+
+        Args:
+            input_batch_order_action: 批量报单操作参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    # -------------------------------------------------------------------------
+    # 执行宣告相关
+    # -------------------------------------------------------------------------
+
+    def req_exec_order_insert(self, input_exec_order: InputExecOrder, request_id: int) -> int:
+        """执行宣告录入请求
+
+        Args:
+            input_exec_order: 执行宣告录入参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_exec_order_action(self, input_exec_order_action: InputExecOrderAction, request_id: int) -> int:
+        """执行宣告操作请求
+
+        Args:
+            input_exec_order_action: 执行宣告操作参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    # -------------------------------------------------------------------------
+    # 询价报价相关
+    # -------------------------------------------------------------------------
+
+    def req_for_quote_insert(self, input_for_quote: InputForQuote, request_id: int) -> int:
+        """询价录入请求
+
+        Args:
+            input_for_quote: 询价录入参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_quote_insert(self, input_quote: InputQuote, request_id: int) -> int:
+        """报价录入请求
+
+        Args:
+            input_quote: 报价录入参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_quote_action(self, input_quote_action: InputQuoteAction, request_id: int) -> int:
+        """报价操作请求
+
+        Args:
+            input_quote_action: 报价操作参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    # -------------------------------------------------------------------------
+    # 期权自对冲相关
+    # -------------------------------------------------------------------------
+
+    def req_option_self_close_insert(self, input_option_self_close: InputOptionSelfClose, request_id: int) -> int:
+        """期权自对冲录入请求
+
+        Args:
+            input_option_self_close: 期权自对冲录入参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_option_self_close_action(self, input_option_self_close_action: InputOptionSelfCloseAction, request_id: int) -> int:
+        """期权自对冲操作请求
+
+        Args:
+            input_option_self_close_action: 期权自对冲操作参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    # -------------------------------------------------------------------------
+    # 组合相关
+    # -------------------------------------------------------------------------
+
+    def req_comb_action_insert(self, input_comb_action: InputCombAction, request_id: int) -> int:
+        """申请组合录入请求
+
+        Args:
+            input_comb_action: 组合录入参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    # -------------------------------------------------------------------------
+    # 对冲设置相关
+    # -------------------------------------------------------------------------
+
+    def req_offset_setting(self, input_offset_setting: InputOffsetSetting, request_id: int) -> int:
+        """对冲设置请求
+
+        Args:
+            input_offset_setting: 对冲设置参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_cancel_offset_setting(self, input_offset_setting: InputOffsetSetting, request_id: int) -> int:
+        """对冲设置撤销请求
+
+        Args:
+            input_offset_setting: 对冲设置参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    # -------------------------------------------------------------------------
+    # 查询相关 - 基础查询
+    # -------------------------------------------------------------------------
+
+    def req_qry_order(self, qry_order: QryOrder, request_id: int) -> int:
+        """请求查询报单
+
+        Args:
+            qry_order: 报单查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_trade(self, qry_trade: QryTrade, request_id: int) -> int:
+        """请求查询成交
+
+        Args:
+            qry_trade: 成交查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_investor_position(self, qry_investor_position: QryInvestorPosition, request_id: int) -> int:
+        """请求查询投资者持仓
+
+        Args:
+            qry_investor_position: 持仓查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_trading_account(self, qry_trading_account: QryTradingAccount, request_id: int) -> int:
+        """请求查询资金账户
+
+        Args:
+            qry_trading_account: 资金账户查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_investor(self, qry_investor: QryInvestor, request_id: int) -> int:
+        """请求查询投资者
+
+        Args:
+            qry_investor: 投资者查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_trading_code(self, qry_trading_code: QryTradingCode, request_id: int) -> int:
+        """请求查询交易编码
+
+        Args:
+            qry_trading_code: 交易编码查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_instrument_margin_rate(self, qry_instrument_margin_rate: QryInstrumentMarginRate, request_id: int) -> int:
+        """请求查询合约保证金率
+
+        Args:
+            qry_instrument_margin_rate: 合约保证金率查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_instrument_commission_rate(self, qry_instrument_commission_rate: QryInstrumentCommissionRate, request_id: int) -> int:
+        """请求查询合约手续费率
+
+        Args:
+            qry_instrument_commission_rate: 合约手续费率查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_user_session(self, qry_user_session: QryUserSession, request_id: int) -> int:
+        """请求查询用户会话
+
+        Args:
+            qry_user_session: 用户会话查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_exchange(self, qry_exchange: QryExchange, request_id: int) -> int:
+        """请求查询交易所
+
+        Args:
+            qry_exchange: 交易所查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_product(self, qry_product: QryProduct, request_id: int) -> int:
+        """请求查询产品
+
+        Args:
+            qry_product: 产品查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_instrument(self, qry_instrument: QryInstrument, request_id: int) -> int:
+        """请求查询合约
+
+        Args:
+            qry_instrument: 合约查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_depth_market_data(self, qry_depth_market_data: QryDepthMarketData, request_id: int) -> int:
+        """请求查询行情
+
+        Args:
+            qry_depth_market_data: 行情查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_settlement_info(self, qry_settlement_info: QrySettlementInfo, request_id: int) -> int:
+        """请求查询投资者结算结果
+
+        Args:
+            qry_settlement_info: 结算信息查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_transfer_bank(self, qry_transfer_bank: QryTransferBank, request_id: int) -> int:
+        """请求查询转帐银行
+
+        Args:
+            qry_transfer_bank: 转帐银行查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_investor_position_detail(self, qry_investor_position_detail: QryInvestorPositionDetail, request_id: int) -> int:
+        """请求查询投资者持仓明细
+
+        Args:
+            qry_investor_position_detail: 持仓明细查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_notice(self, qry_notice: QryNotice, request_id: int) -> int:
+        """请求查询客户通知
+
+        Args:
+            qry_notice: 通知查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_settlement_info_confirm(self, qry_settlement_info_confirm: QrySettlementInfoConfirm, request_id: int) -> int:
+        """请求查询结算信息确认
+
+        Args:
+            qry_settlement_info_confirm: 结算信息确认查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_investor_position_combine_detail(self, qry_investor_position_combine_detail: QryInvestorPositionCombineDetail, request_id: int) -> int:
+        """请求查询投资者持仓明细
+
+        Args:
+            qry_investor_position_combine_detail: 组合持仓明细查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_cfmmc_trading_account_key(self, qry_cfmmc_trading_account_key: QryCFMMCTradingAccountKey, request_id: int) -> int:
+        """请求查询保证金监管系统经纪公司资金账户密钥
+
+        Args:
+            qry_cfmmc_trading_account_key: 经纪公司资金账户密钥查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_ewarrant_offset(self, qry_ewarrant_offset: QryEWarrantOffset, request_id: int) -> int:
+        """请求查询仓单折抵信息
+
+        Args:
+            qry_ewarrant_offset: 仓单折抵信息查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_investor_product_group_margin(self, qry_investor_product_group_margin: QryInvestorProductGroupMargin, request_id: int) -> int:
+        """请求查询投资者品种/跨品种保证金
+
+        Args:
+            qry_investor_product_group_margin: 投资者品种/跨品种保证金查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_exchange_margin_rate(self, qry_exchange_margin_rate: QryExchangeMarginRate, request_id: int) -> int:
+        """请求查询交易所保证金率
+
+        Args:
+            qry_exchange_margin_rate: 交易所保证金率查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_exchange_margin_rate_adjust(self, qry_exchange_margin_rate_adjust: QryExchangeMarginRateAdjust, request_id: int) -> int:
+        """请求查询交易所调整保证金率
+
+        Args:
+            qry_exchange_margin_rate_adjust: 交易所调整保证金率查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_exchange_rate(self, qry_exchange_rate: QryExchangeRate, request_id: int) -> int:
+        """请求查询汇率
+
+        Args:
+            qry_exchange_rate: 汇率查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_sec_agent_acid_map(self, qry_sec_agent_acid_map: QrySecAgentACIDMap, request_id: int) -> int:
+        """请求查询二级代理操作员银期权限
+
+        Args:
+            qry_sec_agent_acid_map: 二级代理操作员银期权限查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_product_exch_rate(self, qry_product_exch_rate: QryProductExchRate, request_id: int) -> int:
+        """请求查询产品报价汇率
+
+        Args:
+            qry_product_exch_rate: 产品报价汇率查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_product_group(self, qry_product_group: QryProductGroup, request_id: int) -> int:
+        """请求查询产品组
+
+        Args:
+            qry_product_group: 产品组查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_mm_instrument_commission_rate(self, qry_mm_instrument_commission_rate: QryMMInstrumentCommissionRate, request_id: int) -> int:
+        """请求查询做市商合约手续费率
+
+        Args:
+            qry_mm_instrument_commission_rate: 做市商合约手续费率查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_mm_option_instr_comm_rate(self, qry_mm_option_instr_comm_rate: QryMMOptionInstrCommRate, request_id: int) -> int:
+        """请求查询做市商期权合约手续费
+
+        Args:
+            qry_mm_option_instr_comm_rate: 做市商期权合约手续费查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_instrument_order_comm_rate(self, qry_instrument_order_comm_rate: QryInstrumentOrderCommRate, request_id: int) -> int:
+        """请求查询报单手续费
+
+        Args:
+            qry_instrument_order_comm_rate: 报单手续费查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_sec_agent_trading_account(self, qry_trading_account: QryTradingAccount, request_id: int) -> int:
+        """请求查询资金账户
+
+        Args:
+            qry_trading_account: 资金账户查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_sec_agent_check_mode(self, qry_sec_agent_check_mode: QrySecAgentCheckMode, request_id: int) -> int:
+        """请求查询二级代理商资金校验模式
+
+        Args:
+            qry_sec_agent_check_mode: 二级代理商资金校验模式查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_sec_agent_trade_info(self, qry_sec_agent_trade_info: QrySecAgentTradeInfo, request_id: int) -> int:
+        """请求查询二级代理商信息
+
+        Args:
+            qry_sec_agent_trade_info: 二级代理商信息查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_option_instr_trade_cost(self, qry_option_instr_trade_cost: QryOptionInstrTradeCost, request_id: int) -> int:
+        """请求查询期权交易成本
+
+        Args:
+            qry_option_instr_trade_cost: 期权交易成本查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_option_instr_comm_rate(self, qry_option_instr_comm_rate: QryOptionInstrCommRate, request_id: int) -> int:
+        """请求查询期权合约手续费
+
+        Args:
+            qry_option_instr_comm_rate: 期权合约手续费查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_exec_order(self, qry_exec_order: QryExecOrder, request_id: int) -> int:
+        """请求查询执行宣告
+
+        Args:
+            qry_exec_order: 执行宣告查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_for_quote(self, qry_for_quote: QryForQuote, request_id: int) -> int:
+        """请求查询询价
+
+        Args:
+            qry_for_quote: 询价查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_quote(self, qry_quote: QryQuote, request_id: int) -> int:
+        """请求查询报价
+
+        Args:
+            qry_quote: 报价查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_option_self_close(self, qry_option_self_close: QryOptionSelfClose, request_id: int) -> int:
+        """请求查询期权自对冲
+
+        Args:
+            qry_option_self_close: 期权自对冲查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_invest_unit(self, qry_invest_unit: QryInvestUnit, request_id: int) -> int:
+        """请求查询投资单元
+
+        Args:
+            qry_invest_unit: 投资单元查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_comb_instrument_guard(self, qry_comb_instrument_guard: QryCombInstrumentGuard, request_id: int) -> int:
+        """请求查询组合合约安全系数
+
+        Args:
+            qry_comb_instrument_guard: 组合合约安全系数查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_comb_action(self, qry_comb_action: QryCombAction, request_id: int) -> int:
+        """请求查询申请组合
+
+        Args:
+            qry_comb_action: 申请组合查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    # -------------------------------------------------------------------------
+    # 查询相关 - 银期转账
+    # -------------------------------------------------------------------------
+
+    def req_qry_transfer_serial(self, qry_transfer_serial: QryTransferSerial, request_id: int) -> int:
+        """请求查询转帐流水
+
+        Args:
+            qry_transfer_serial: 转帐流水查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_account_register(self, qry_account_register: QryAccountRegister, request_id: int) -> int:
+        """请求查询银期签约关系
+
+        Args:
+            qry_account_register: 银期签约关系查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_contract_bank(self, qry_contract_bank: QryContractBank, request_id: int) -> int:
+        """请求查询签约银行
+
+        Args:
+            qry_contract_bank: 签约银行查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_from_bank_to_future_by_future(self, req_transfer: ReqTransfer, request_id: int) -> int:
+        """期货发起银行资金转期货请求
+
+        Args:
+            req_transfer: 转账请求参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_from_future_to_bank_by_future(self, req_transfer: ReqTransfer, request_id: int) -> int:
+        """期货发起期货资金转银行请求
+
+        Args:
+            req_transfer: 转账请求参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_query_bank_account_money_by_future(self, req_query_account: ReqQueryAccount, request_id: int) -> int:
+        """期货发起查询银行余额请求
+
+        Args:
+            req_query_account: 查询银行余额请求参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    # -------------------------------------------------------------------------
+    # 查询相关 - 预埋单
+    # -------------------------------------------------------------------------
+
+    def req_qry_parked_order(self, qry_parked_order: QryParkedOrder, request_id: int) -> int:
+        """请求查询预埋单
+
+        Args:
+            qry_parked_order: 预埋单查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_parked_order_action(self, qry_parked_order_action: QryParkedOrderAction, request_id: int) -> int:
+        """请求查询预埋撤单
+
+        Args:
+            qry_parked_order_action: 预埋撤单查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    # -------------------------------------------------------------------------
+    # 查询相关 - 其他
+    # -------------------------------------------------------------------------
+
+    def req_qry_trading_notice(self, qry_trading_notice: QryTradingNotice, request_id: int) -> int:
+        """请求查询交易通知
+
+        Args:
+            qry_trading_notice: 交易通知查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_broker_trading_params(self, qry_broker_trading_params: QryBrokerTradingParams, request_id: int) -> int:
+        """请求查询经纪公司交易参数
+
+        Args:
+            qry_broker_trading_params: 经纪公司交易参数查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_broker_trading_algos(self, qry_broker_trading_algos: QryBrokerTradingAlgos, request_id: int) -> int:
+        """请求查询经纪公司交易算法
+
+        Args:
+            qry_broker_trading_algos: 经纪公司交易算法查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_query_cfmmc_trading_account_token(self, query_cfmmc_trading_account_token: QueryCFMMCTradingAccountToken, request_id: int) -> int:
+        """请求查询监控中心用户令牌
+
+        Args:
+            query_cfmmc_trading_account_token: 监控中心用户令牌查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_classified_instrument(self, qry_classified_instrument: QryClassifiedInstrument, request_id: int) -> int:
+        """请求查询分类合约
+
+        Args:
+            qry_classified_instrument: 分类合约查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_comb_promotion_param(self, qry_comb_promotion_param: QryCombPromotionParam, request_id: int) -> int:
+        """请求组合优惠比例
+
+        Args:
+            qry_comb_promotion_param: 组合优惠比例查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_offset_setting(self, qry_offset_setting: QryOffsetSetting, request_id: int) -> int:
+        """投资者对冲设置查询
+
+        Args:
+            qry_offset_setting: 对冲设置查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    # -------------------------------------------------------------------------
+    # SPBM 组合保证金查询
+    # -------------------------------------------------------------------------
+
+    def req_qry_spbm_future_parameter(self, qry_spbm_future_parameter: QrySPBMFutureParameter, request_id: int) -> int:
+        """SPBM 期货合约参数查询
+
+        Args:
+            qry_spbm_future_parameter: SPBM 期货合约参数查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_spbm_option_parameter(self, qry_spbm_option_parameter: QrySPBMOptionParameter, request_id: int) -> int:
+        """SPBM 期权合约参数查询
+
+        Args:
+            qry_spbm_option_parameter: SPBM 期权合约参数查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_spbm_intra_parameter(self, qry_spbm_intra_parameter: QrySPBMIntraParameter, request_id: int) -> int:
+        """SPBM 品种内对锁仓折扣参数查询
+
+        Args:
+            qry_spbm_intra_parameter: SPBM 品种内对锁仓折扣参数查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_spbm_inter_parameter(self, qry_spbm_inter_parameter: QrySPBMInterParameter, request_id: int) -> int:
+        """SPBM 跨品种抵扣参数查询
+
+        Args:
+            qry_spbm_inter_parameter: SPBM 跨品种抵扣参数查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_spbm_portf_definition(self, qry_spbm_portf_definition: QrySPBMPortfDefinition, request_id: int) -> int:
+        """SPBM 组合保证金套餐查询
+
+        Args:
+            qry_spbm_portf_definition: SPBM 组合保证金套餐查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_spbm_investor_portf_def(self, qry_spbm_investor_portf_def: QrySPBMInvestorPortfDef, request_id: int) -> int:
+        """投资者 SPBM 套餐选择查询
+
+        Args:
+            qry_spbm_investor_portf_def: 投资者 SPBM 套餐选择查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_investor_portf_margin_ratio(self, qry_investor_portf_margin_ratio: QryInvestorPortfMarginRatio, request_id: int) -> int:
+        """投资者新型组合保证金系数查询
+
+        Args:
+            qry_investor_portf_margin_ratio: 投资者新型组合保证金系数查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_investor_prod_spbm_detail(self, qry_investor_prod_spbm_detail: QryInvestorProdSPBMDetail, request_id: int) -> int:
+        """投资者产品 SPBM 明细查询
+
+        Args:
+            qry_investor_prod_spbm_detail: 投资者产品 SPBM 明细查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_investor_commodity_spmm_margin(self, qry_investor_commodity_spmm_margin: QryInvestorCommoditySPMMMargin, request_id: int) -> int:
+        """投资者商品 SPMM 记录查询
+
+        Args:
+            qry_investor_commodity_spmm_margin: 投资者商品 SPMM 记录查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_investor_commodity_group_spmm_margin(self, qry_investor_commodity_group_spmm_margin: QryInvestorCommodityGroupSPMMMargin, request_id: int) -> int:
+        """投资者商品群 SPMM 记录查询
+
+        Args:
+            qry_investor_commodity_group_spmm_margin: 投资者商品群 SPMM 记录查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_spmm_inst_param(self, qry_spmm_inst_param: QrySPMMInstParam, request_id: int) -> int:
+        """SPMM 合约参数查询
+
+        Args:
+            qry_spmm_inst_param: SPMM 合约参数查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_spmm_product_param(self, qry_spmm_product_param: QrySPMMProductParam, request_id: int) -> int:
+        """SPMM 产品参数查询
+
+        Args:
+            qry_spmm_product_param: SPMM 产品参数查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_spbm_add_on_inter_parameter(self, qry_spbm_add_on_inter_parameter: QrySPBMAddOnInterParameter, request_id: int) -> int:
+        """SPBM 附加跨品种抵扣参数查询
+
+        Args:
+            qry_spbm_add_on_inter_parameter: SPBM 附加跨品种抵扣参数查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    # -------------------------------------------------------------------------
+    # RCAMS 组合保证金查询
+    # -------------------------------------------------------------------------
+
+    def req_qry_rcams_comb_product_info(self, qry_rcams_comb_product_info: QryRCAMSCombProductInfo, request_id: int) -> int:
+        """RCAMS 产品组合信息查询
+
+        Args:
+            qry_rcams_comb_product_info: RCAMS 产品组合信息查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_rcams_instr_parameter(self, qry_rcams_instr_parameter: QryRCAMSInstrParameter, request_id: int) -> int:
+        """RCAMS 同合约风险对冲参数查询
+
+        Args:
+            qry_rcams_instr_parameter: RCAMS 同合约风险对冲参数查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_rcams_intra_parameter(self, qry_rcams_intra_parameter: QryRCAMSIntraParameter, request_id: int) -> int:
+        """RCAMS 品种内风险对冲参数查询
+
+        Args:
+            qry_rcams_intra_parameter: RCAMS 品种内风险对冲参数查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_rcams_inter_parameter(self, qry_rcams_inter_parameter: QryRCAMSInterParameter, request_id: int) -> int:
+        """RCAMS 跨品种风险折抵参数查询
+
+        Args:
+            qry_rcams_inter_parameter: RCAMS 跨品种风险折抵参数查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_rcams_short_opt_adjust_param(self, qry_rcams_short_opt_adjust_param: QryRCAMSShortOptAdjustParam, request_id: int) -> int:
+        """RCAMS 空头期权风险调整参数查询
+
+        Args:
+            qry_rcams_short_opt_adjust_param: RCAMS 空头期权风险调整参数查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_rcams_investor_comb_position(self, qry_rcams_investor_comb_position: QryRCAMSInvestorCombPosition, request_id: int) -> int:
+        """RCAMS 策略组合持仓查询
+
+        Args:
+            qry_rcams_investor_comb_position: RCAMS 策略组合持仓查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_investor_prod_rcams_margin(self, qry_investor_prod_rcams_margin: QryInvestorProdRCAMSMargin, request_id: int) -> int:
+        """投资者品种 RCAMS 保证金查询
+
+        Args:
+            qry_investor_prod_rcams_margin: 投资者品种 RCAMS 保证金查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    # -------------------------------------------------------------------------
+    # RULE 组合保证金查询
+    # -------------------------------------------------------------------------
+
+    def req_qry_rule_instr_parameter(self, qry_rule_instr_parameter: QryRULEInstrParameter, request_id: int) -> int:
+        """RULE 合约保证金参数查询
+
+        Args:
+            qry_rule_instr_parameter: RULE 合约保证金参数查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_rule_intra_parameter(self, qry_rule_intra_parameter: QryRULEIntraParameter, request_id: int) -> int:
+        """RULE 品种内对锁仓折扣参数查询
+
+        Args:
+            qry_rule_intra_parameter: RULE 品种内对锁仓折扣参数查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_rule_inter_parameter(self, qry_rule_inter_parameter: QryRULEInterParameter, request_id: int) -> int:
+        """RULE 跨品种抵扣参数查询
+
+        Args:
+            qry_rule_inter_parameter: RULE 跨品种抵扣参数查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_investor_prod_rule_margin(self, qry_investor_prod_rule_margin: QryInvestorProdRULEMargin, request_id: int) -> int:
+        """投资者产品 RULE 保证金查询
+
+        Args:
+            qry_investor_prod_rule_margin: 投资者产品 RULE 保证金查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_investor_portf_setting(self, qry_investor_portf_setting: QryInvestorPortfSetting, request_id: int) -> int:
+        """投资者投资者新组保设置查询
+
+        Args:
+            qry_investor_portf_setting: 投资者新组保设置查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_investor_info_comm_rec(self, qry_investor_info_comm_rec: QryInvestorInfoCommRec, request_id: int) -> int:
+        """投资者申报费阶梯收取记录查询
+
+        Args:
+            qry_investor_info_comm_rec: 投资者申报费阶梯收取记录查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_comb_leg(self, qry_comb_leg: QryCombLeg, request_id: int) -> int:
+        """组合腿信息查询
+
+        Args:
+            qry_comb_leg: 组合腿信息查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
+    def req_qry_trader_offer(self, qry_trader_offer: QryTraderOffer, request_id: int) -> int:
+        """报单查询
+
+        Args:
+            qry_trader_offer: 报单查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+    def req_qry_risk_settle_invest_position(self, qry_risk_settle_invest_position: QryRiskSettleInvestPosition, request_id: int) -> int:
+        """投资者风险对冲持仓查询
+
+        Args:
+            qry_risk_settle_invest_position: 投资者风险对冲持仓查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+    def req_qry_risk_settle_product_status(self, qry_risk_settle_product_status: QryRiskSettleProductStatus, request_id: int) -> int:
+        """风险对冲产品状态查询
+
+        Args:
+            qry_risk_settle_product_status: 风险对冲产品状态查询参数
+            request_id: 请求ID
+
+        Returns:
+            请求结果，0表示成功，非0表示失败
+        """
+        ...
+
 
 
 # =============================================================================
@@ -1758,3 +2847,92 @@ def get_pool_sizes() -> Dict[str, int]:
         - brokers: 经纪公司代码池大小
     """
     ...
+
+# =============================================================================
+# PyCapsule 辅助函数（用于零拷贝数据传递）
+# =============================================================================
+
+def pycapsule_check_exact(obj: object) -> int:
+    """
+    检查对象是否为 Capsule 类型
+
+    Args:
+        obj: 待检查的对象
+
+    Returns:
+        1 如果是 Capsule，0 否则
+    """
+    ...
+
+def pycapsule_get_pointer(capsule: object, name: str) -> int:
+    """
+    从 Capsule 获取 C 指针
+
+    Args:
+        capsule: Capsule 对象
+        name: Capsule 名称（如 "DepthMarketData"）
+
+    Returns:
+        C 结构体指针地址（整数）
+    """
+    ...
+
+def pycapsule_new(ptr: int, name: str, destructor: object = None) -> object:
+    """
+    创建新的 Capsule 对象
+
+    Args:
+        ptr: C 指针地址（整数）
+        name: Capsule 名称
+        destructor: 析构函数（可选）
+
+    Returns:
+        新创建的 Capsule 对象
+    """
+    ...
+
+# =============================================================================
+# FIX 穿透式监管数据采集模块
+# =============================================================================
+
+class Fix:
+    """
+    FIX 数据采集模块
+
+    用于中继模式下采集终端系统信息。
+
+    注意：
+    - 仅中继模式需要使用此模块
+    - 直连模式不需要调用 collect_system_info()，CTP 会自动采集
+
+    使用示例：
+        >>> from PcCTP import Fix
+        >>> system_info = Fix.collect_system_info()
+        >>> version = Fix.get_fix_api_version()
+    """
+
+    @staticmethod
+    def collect_system_info() -> bytes:
+        """
+        采集系统信息
+
+        返回：
+            bytes 对象，包含采集的系统信息（至少 270 字节）
+            用于中继模式下传递给 RegisterUserSystemInfo 或 SubmitUserSystemInfo
+
+        注意：
+            1. 采集库不是线程安全的，多线程调用时需要加锁
+            2. 采集的信息是二进制数据，不是字符串
+            3. 直连模式不需要调用此函数，CTP 会自动采集
+        """
+        ...
+
+    @staticmethod
+    def get_fix_api_version() -> str:
+        """
+        获取 FIX 采集库版本
+
+        返回：
+            版本字符串（如 "sfit_pro_1.0_20220124_1468"）
+        """
+        ...

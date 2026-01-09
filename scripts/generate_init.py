@@ -1,137 +1,167 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-生成 __init__.py 文件的脚本
+PcCTP Python 文件生成脚本
 
-支持两种模式：
-1. 平台特定模式：生成 PcCTP/{platform}/__init__.py（简化版）
-2. 主入口模式：生成 PcCTP/__init__.py（完整版，带平台检测）
+职责：
+1. 读取版本号文件（从 src/version.txt, ctp/PC/version.txt, ctp/fix/version.txt）
+2. 复制 src 下的文件到 PcCTP 目录
+3. 生成 __init__.py 文件（平台特定和主入口）
 
-支持两种绑定类型：
-1. nanobind：使用 PyMdSpi 类
-2. Python C API：不使用 PyMdSpi 类
+支持命令行参数：
+  --platform     目标平台 (win64, linux)
+  --stage        执行阶段
+                 - prepare: 编译前准备（复制文件，生成 __init__.py）
+                 - finalize: 编译后整理（更新 __init__.py）
+                 - all: 执行所有步骤
+  --use-nanobind 是否使用 nanobind 绑定层（默认：OFF，使用 Python C API）
+
+使用示例：
+  python generate_init.py --platform win64 --stage prepare
+  python generate_init.py --platform win64 --stage finalize
+  python generate_init.py --platform win64 --stage all
 """
-import os
+
 import sys
 import re
+import shutil
+import argparse
 from pathlib import Path
 
-# =============================================================================
-# nanobind 版本的模板
-# =============================================================================
-
-# nanobind 平台特定模板
-PLATFORM_INIT_TEMPLATE_NANOBIND = '''# {module_name} - {platform} 平台特定模块
-# 自动生成文件，请勿手动修改
-
-# 导入模块的所有内容（包含 PyMdSpi, MdApi 等）
-from .{module_name} import *
-
-# 定义__all__列表
-__all__ = [
-    # 字符串池监控和清理函数
-    "cleanup_temporal_pools", "cleanup_instruments",
-    "check_instrument_pool_size", "get_pool_sizes",
-    # 核心类（2个）
-    "PyMdSpi", "MdApi",
-]
-'''
-
-# nanobind 主入口模板
-MAIN_INIT_TEMPLATE_NANOBIND = '''# {module_name} - CTP API Python 绑定
-# 自动生成文件，请勿手动修改
-# 模块常量
-# =============================================================================
-
-# PcCTP 模块版本号
-__version__ = 'v{pcctp_version}'
-# CTP 接口版本号
-__ctp_version__ = '{version}'
-# 采集库fix版本号
-__fix_version__ = '{fix_version}'
-# 运行平台
-__platform__ = '{platform}'
-# 版本类型
-__version_type__ = '{version_type}'
-
-__full_version__ = '{module_name} v{pcctp_version} | CTP {ctp_version} | FIX {fix_version} | {version_type} | {ctp_platform}'
-import platform
-import os
-# 获取操作系统类型
-def get_os_type():
-    """获取操作系统类型: win64, win32, linux, macos, 或其他"""
-    system = platform.system().lower()
-    if system == "windows":
-        # 通过环境变量检测系统架构
-        arch_env = os.environ.get('PROCESSOR_ARCHITECTURE', '')
-        arch_env_w6432 = os.environ.get('PROCESSOR_ARCHITEW6432', '')
-        if 'AMD64' in (arch_env, arch_env_w6432):
-            return 'win64'
-        else:
-            return 'win32'
-    elif system == "linux":
-        return 'linux'
-    elif system == "darwin":
-        return 'macos'
-    else:
-        return 'other'
-
-# 调用方法获取当前系统类型
-env = get_os_type()
-
-# 通过系统类型导入对应的接口
-if env == 'win64':  # windows64位
-    from PcCTP.win64 import *
-    print('导入PyCTP')
-elif env == 'win32':  # windows32位
-    from PcCTP.win32 import *
-elif env == 'linux':  # linux
-    from PcCTP.linux import *
-else:  # 其他系统 暂不支持,如：macOS
-    raise EnvironmentError('本CTP版本与当前系统不匹配')
-
-# 导入所有枚举类（支持 from win64 import Direction, OffsetFlag 等）
-from .enums import *
-from .types import *
-
-# 定义__all__列表，包含所有导出的名称
-__all__ = [
-    # 枚举类
-{enum_names},
-    # 方法
-    "validate_direction", "validate_offset_flag",
-    "validate_order_price_type", "get_direction_name",
-    "get_offset_flag_name",
-    # 错误码映射
-    "reason_map",
-    # 字符串池监控和清理函数
-    "cleanup_temporal_pools", "cleanup_instruments",
-    "check_instrument_pool_size", "get_pool_sizes",
-    # 核心类（2个）
-    "PyMdSpi", "MdApi",
-    # TypedDict（{type_count}个）
-{type_names},
-]
-'''
 
 # =============================================================================
-# Python C API 版本的模板
+# 版本号读取
+# =============================================================================
+
+def read_version_file(file_path: Path) -> str:
+    """读取版本号文件，去除首尾空白"""
+    if file_path.exists():
+        try:
+            content = file_path.read_text(encoding='utf-8')
+            return content.strip()
+        except Exception as e:
+            print(f"[警告] 无法读取版本文件 {file_path}: {e}")
+    return "unknown"
+
+
+def get_all_versions(project_root: Path) -> dict:
+    """读取所有版本号
+
+    Returns:
+        dict: 包含 pcctp_version, ctp_version, fix_version 的字典
+    """
+    versions = {
+        'pcctp_version': read_version_file(project_root / 'src' / 'version.txt'),
+        'ctp_version': read_version_file(project_root / 'ctp' / 'PC' / 'version.txt'),
+        'fix_version': read_version_file(project_root / 'ctp' / 'fix' / 'version.txt'),
+    }
+    return versions
+
+
+# =============================================================================
+# 文件复制
+# =============================================================================
+
+def copy_python_files(project_root: Path, target_platform: str) -> bool:
+    """复制 src 下的 Python 文件到 PcCTP 目录
+
+    Args:
+        project_root: 项目根目录
+        target_platform: 目标平台 (win64, win32, linux)
+
+    Returns:
+        bool: 是否成功
+    """
+    src_dir = project_root / 'src'
+    pcctp_dir = project_root / 'PcCTP'
+
+    # 需要复制的文件和目录
+    items_to_copy = [
+        ('enums.py', 'enums.py'),
+        ('interface.py', 'interface.py'),
+        ('types', 'types'),  # 整个目录
+    ]
+
+    print("[复制] Python 文件...")
+    for src_name, dst_name in items_to_copy:
+        src_path = src_dir / src_name
+        dst_path = pcctp_dir / dst_name
+
+        if not src_path.exists():
+            print(f"[警告] 源文件不存在: {src_path}")
+            continue
+
+        try:
+            if src_path.is_dir():
+                # 复制目录
+                if dst_path.exists():
+                    shutil.rmtree(dst_path)
+                shutil.copytree(src_path, dst_path)
+                print(f"  [目录] {src_name} -> {dst_name}")
+            else:
+                # 复制文件
+                shutil.copy2(src_path, dst_path)
+                print(f"  [文件] {src_name} -> {dst_name}")
+        except Exception as e:
+            print(f"[错误] 复制失败 {src_name}: {e}")
+            return False
+
+    return True
+
+
+def copy_type_stub_files(project_root: Path) -> bool:
+    """复制 PcCTP.pyi 类型存根文件到所有平台文件夹
+
+    Args:
+        project_root: 项目根目录
+
+    Returns:
+        bool: 是否成功
+    """
+    src_stub = project_root / 'src' / 'PcCTP.pyi'
+    pcctp_dir = project_root / 'PcCTP'
+
+    if not src_stub.exists():
+        print(f"[警告] 类型存根文件不存在: {src_stub}")
+        return True  # 不是致命错误
+
+    platforms = ['win64', 'linux']
+
+    print("[复制] 类型存根文件...")
+    for platform in platforms:
+        dst_stub = pcctp_dir / platform / 'PcCTP.pyi'
+        try:
+            shutil.copy2(src_stub, dst_stub)
+            print(f"  [文件] PcCTP.pyi -> {platform}/PcCTP.pyi")
+        except Exception as e:
+            print(f"[错误] 复制类型存根文件失败 ({platform}): {e}")
+            return False
+
+    return True
+
+
+# =============================================================================
+# 模板定义
 # =============================================================================
 
 # Python C API 平台特定模板
 PLATFORM_INIT_TEMPLATE_PYTHON_C_API = '''# {module_name} - {platform} 平台特定模块
 # 自动生成文件，请勿手动修改
+# 运行平台
+__platform__ = '{platform}'
 
 # 导入模块的所有内容（包含 MdApi 等）
 from .{module_name} import *
 
 # 定义__all__列表
 __all__ = [
+    # PyCapsule 辅助函数
+    "pycapsule_check_exact", "pycapsule_get_pointer", "pycapsule_new",
     # 字符串池监控和清理函数
     "cleanup_temporal_pools", "cleanup_instruments",
     "check_instrument_pool_size", "get_pool_sizes",
-    # 核心类（1个）
-    "MdApi",
+    # 核心类
+    "MdApi","TradeApi","Fix",
 ]
 '''
 
@@ -144,46 +174,23 @@ MAIN_INIT_TEMPLATE_PYTHON_C_API = '''# {module_name} - CTP API Python 绑定
 # PcCTP 模块版本号
 __version__ = 'v{pcctp_version}'
 # CTP 接口版本号
-__ctp_version__ = '{version}'
+__ctp_version__ = '{ctp_version}'
 # 采集库fix版本号
 __fix_version__ = '{fix_version}'
-# 运行平台
-__platform__ = '{platform}'
 # 版本类型
 __version_type__ = '{version_type}'
 
-__full_version__ = '{module_name} v{pcctp_version} | CTP {ctp_version} | FIX {fix_version} | {version_type} | {ctp_platform}'
+__full_version__ = '{module_name} v{pcctp_version} | CTP {ctp_version} | FIX {fix_version} | {version_type} '
 import platform
 import os
 from PcCTP.interface import *
 # 获取操作系统类型
-def get_os_type():
-    """获取操作系统类型: win64, win32, linux, macos, 或其他"""
-    system = platform.system().lower()
-    if system == "windows":
-        # 通过环境变量检测系统架构
-        arch_env = os.environ.get('PROCESSOR_ARCHITECTURE', '')
-        arch_env_w6432 = os.environ.get('PROCESSOR_ARCHITEW6432', '')
-        if 'AMD64' in (arch_env, arch_env_w6432):
-            return 'win64'
-        else:
-            return 'win32'
-    elif system == "linux":
-        return 'linux'
-    elif system == "darwin":
-        return 'macos'
-    else:
-        return 'other'
-
-# 调用方法获取当前系统类型
-env = get_os_type()
+from PcCTP.types import *
 
 # 通过系统类型导入对应的接口
 if env == 'win64':  # windows64位
     from PcCTP.win64 import *
-    print('导入PyCTP')
-elif env == 'win32':  # windows32位
-    from PcCTP.win32 import *
+    print('导入PcCTP')
 elif env == 'linux':  # linux
     from PcCTP.linux import *
 else:  # 其他系统 暂不支持,如：macOS
@@ -191,10 +198,10 @@ else:  # 其他系统 暂不支持,如：macOS
 
 # 导入所有枚举类（支持 from win64 import Direction, OffsetFlag 等）
 from PcCTP.enums import *
-from PcCTP.types import *
 
 # 定义__all__列表，包含所有导出的名称
 __all__ = [
+    "env",
     # 枚举类
 {enum_names},
     # 方法
@@ -203,36 +210,42 @@ __all__ = [
     "get_offset_flag_name",
     # 错误码映射
     "reason_map",
+    # PyCapsule 辅助函数
+    "pycapsule_check_exact", "pycapsule_get_pointer", "pycapsule_new",
     # 字符串池监控和清理函数
     "cleanup_temporal_pools", "cleanup_instruments",
     "check_instrument_pool_size", "get_pool_sizes",
-    # 核心类（1个）
-    "MdApi",
+    # 核心类
+    "PyMdSpi","MdApi","PyTradeSpi","TradeApi","Fix",
     # TypedDict（{type_count}个）
 {type_names},
 ]
 '''
 
 
-def extract_enum_names(enums_file: Path) -> list[str]:
+# =============================================================================
+# 代码生成辅助函数
+# =============================================================================
+
+def extract_enum_names(enums_file: Path) -> list:
     """从 enums.py 文件中提取所有枚举类名"""
-    content = Path(enums_file).read_text(encoding='utf-8')
-    # 匹配 class XxxName(StrEnum):
-    pattern = r'^class (\w+)\(StrEnum\):'
+    content = enums_file.read_text(encoding='utf-8')
+    # 匹配 class XxxName(StrEnum): 或 class XxxName(IntEnum):
+    pattern = r'^class (\w+)\((?:StrEnum|IntEnum)\):'
     matches = re.findall(pattern, content, flags=re.MULTILINE)
     return sorted(matches)
 
 
-def extract_type_names(types_file: Path) -> list[str]:
-    """从 types.py 文件中提取所有 TypedDict 类名"""
-    content = Path(types_file).read_text(encoding='utf-8')
-    # 匹配 class XxxName(TypedDict): 或 class XxxName(TypedDict, ...):
-    pattern = r'^class (\w+)\(TypedDict\b'
+def extract_type_names(types_file: Path) -> list:
+    """从 types/__init__.py 文件中提取所有类名"""
+    content = types_file.read_text(encoding='utf-8')
+    # 匹配 __all__ 中的类名，格式: "ClassName"
+    pattern = r'^\s+"(\w+)"'
     matches = re.findall(pattern, content, flags=re.MULTILINE)
     return sorted(matches)
 
 
-def format_list(items: list[str], indent: str = '    ') -> str:
+def format_list(items: list, indent: str = '    ') -> str:
     """将类名列表格式化为 __all__ 列表格式"""
     if not items:
         return ''
@@ -247,173 +260,243 @@ def format_list(items: list[str], indent: str = '    ') -> str:
     return '\n'.join(lines)
 
 
-def get_binding_type():
-    """获取绑定类型：nanobind 或 Python C API"""
-    use_nanobind = os.environ.get('USE_NANOBIND', 'OFF')
-    return 'nanobind' if use_nanobind.upper() == 'ON' or use_nanobind.upper() == '1' or use_nanobind.upper() == 'TRUE' else 'python_c_api'
+# =============================================================================
+# __init__.py 文件生成
+# =============================================================================
 
+def generate_platform_init(
+    project_root: Path,
+    target_platform: str,
+    versions: dict,
+    module_name: str = 'PcCTP'
+) -> bool:
+    """生成平台特定的 __init__.py 文件（PcCTP/{platform}/__init__.py）
 
-def generate_platform_init():
-    """生成平台特定的 __init__.py 文件（PcCTP/{platform}/__init__.py）"""
-    ctp_output_dir = os.environ.get('CTP_OUTPUT_DIR')
-    ctp_platform = os.environ.get('CTP_PLATFORM', 'unknown')
-    module_name = os.environ.get('MODULE_NAME', 'PcCTP')
-    binding_type = get_binding_type()
+    Args:
+        project_root: 项目根目录
+        target_platform: 目标平台 (win64, win32, linux)
+        versions: 版本号字典
+        module_name: 模块名称
 
-    if not ctp_output_dir:
-        print("错误: CTP_OUTPUT_DIR 环境变量未设置", file=sys.stderr)
-        return 1
+    Returns:
+        bool: 是否成功
+    """
+    output_dir = project_root / 'PcCTP' / target_platform
+    output_file = output_dir / '__init__.py'
 
-    # 根据绑定类型选择模板
-    if binding_type == 'nanobind':
-        template = PLATFORM_INIT_TEMPLATE_NANOBIND
-        print(f"[信息] 使用 nanobind 平台特定模板")
-    else:
-        template = PLATFORM_INIT_TEMPLATE_PYTHON_C_API
-        print(f"[信息] 使用 Python C API 平台特定模板")
+    # 确保输出目录存在
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-    # 使用模板
-    content = template.format(
+    # 使用模板生成内容
+    content = PLATFORM_INIT_TEMPLATE_PYTHON_C_API.format(
         module_name=module_name,
-        platform=ctp_platform,
+        platform=target_platform,
     )
 
-    output_file = os.path.join(ctp_output_dir, '__init__.py')
-    with open(output_file, 'w', encoding='utf-8') as f:
-        f.write(content)
+    try:
+        output_file.write_text(content, encoding='utf-8')
+        print(f"[生成] {output_file.relative_to(project_root)}")
+        return True
+    except Exception as e:
+        print(f"[错误] 生成文件失败: {e}")
+        return False
 
-    print(f"生成 {output_file}")
-    return 0
 
+def generate_main_init(
+    project_root: Path,
+    target_platform: str,
+    versions: dict,
+    module_name: str = 'PcCTP'
+) -> bool:
+    """生成主入口的 __init__.py 文件（PcCTP/__init__.py）
 
-def generate_main_init():
-    """生成主入口的 __init__.py 文件（PcCTP/__init__.py）"""
-    ctp_base_dir = os.environ.get('CTP_BASE_DIR')
-    ctp_version = os.environ.get('CTP_VERSION', 'unknown')
-    ctp_platform = os.environ.get('CTP_PLATFORM', 'unknown')
-    version_type_display = os.environ.get('VERSION_TYPE_DISPLAY', 'PC')
-    pcctp_version = os.environ.get('PCCTP_VERSION', '1.0.0')
-    fix_version = os.environ.get('FIX_VERSION', 'unknown')
-    module_name = os.environ.get('MODULE_NAME', 'PcCTP')
-    binding_type = get_binding_type()
+    Args:
+        project_root: 项目根目录
+        target_platform: 目标平台
+        versions: 版本号字典
+        module_name: 模块名称
 
-    if not ctp_base_dir:
-        print("错误: CTP_BASE_DIR 环境变量未设置", file=sys.stderr)
-        return 1
+    Returns:
+        bool: 是否成功
+    """
+    output_file = project_root / 'PcCTP' / '__init__.py'
 
-    base_dir = Path(__file__).parent.parent
-
-    # 从 enums.py 提取枚举类名
-    enums_file = base_dir / 'src/enums.py'
-    if not enums_file.exists():
-        print(f"警告: 找不到 {enums_file}，使用默认枚举列表", file=sys.stderr)
-        enum_names = [
-            "AMLCheckStatus", "AMLGenStatus", "APIProductClass", "AccountSettlementParamID",
-            "AccountSourceType", "ActionDirection", "ActionFlag", "ActionType", "ActiveType", "AlgoType", "Algorithm",
-            "AllWithoutTrade", "AmType", "AmlCheckLevel", "AmlDateType", "AppType", "ApplyOperateID", "ApplyStatusID",
-            "ApplyType", "AssetmgrClientType", "AssetmgrType", "AuthType", "AvailabilityFlag", "BackUpStatus", "BalanceAlgorithm",
-            "BalanceType", "BankAccStatus", "BankAccType", "BankAccountOrigin", "BankRepealFlag", "BasisPriceType", "BatchStatus",
-            "BillGenStatus", "BillHedgeFlag", "BizType", "BrokerDataSyncStatus", "BrokerFunctionCode", "BrokerRepealFlag",
-            "BrokerType", "BrokerUserType", "BusinessClass", "BusinessType", "ByGroup", "ByInvestorRange", "CCBFeeMode",
-            "CFFEXUploadFileName", "CFMMCKeyKind", "CSRCDataQueryType", "CSRCFundIOType", "CTPType", "CZCEUploadFileName",
-            "CashExchangeCode", "CertificationType", "CfmmcReturnCode", "CheckInstrType", "CheckLevel", "CheckStatus",
-            "ClassType", "ClientIDStatus", "ClientIDType", "ClientRegion", "ClientType", "CloseDealType", "CloseStyle", "CodeSourceType",
-            "CombDirection", "CombinationType", "CommApiType", "ConditionalOrderSortType", "ConnectMode", "ContingentCondition",
-            "CurrExDirection", "CurrencySwapStatus", "CusAccountType", "CustType", "DAClientType", "DBOperation", "DCEUploadFileName",
-            "DataResource", "DataStatus", "DataSyncStatus", "DceCombinationType", "DeliveryMode", "DeliveryType", "DepartmentRange",
-            "Direction", "DirectionEn", "EnumBool", "EventMode", "ExClientIDType", "ExDirection", "ExStatus", "ExchangeConnectStatus",
-            "ExchangeIDType", "ExchangeProperty", "ExchangeSettlementParamID", "ExecOrderCloseFlag", "ExecOrderPositionFlag",
-            "ExecResult", "ExportFileType", "ExprSetMode", "FBEAlreadyTrade", "FBEExchStatus", "FBEFileFlag", "FBEReqFlag",
-            "FBEResultFlag", "FBEUserEventType", "FBTEncryMode", "FBTPassWordType", "FBTTradeCodeEnum", "FBTTransferDirection",
-            "FBTUserEventType", "FeeAcceptStyle", "FeePayFlag", "FileBusinessCode", "FileFormat", "FileGenStyle", "FileID",
-            "FileStatus", "FileType", "FileUploadStatus", "FindMarginRateAlgoID", "FlexStatMode", "FlowID", "ForQuoteStatus",
-            "ForceCloseReason", "ForceCloseType", "FreezeStatus", "FunctionCode", "FundDirection", "FundDirectionEn",
-            "FundEventType", "FundIOType", "FundIOTypeEn", "FundMortDirection", "FundMortDirectionEn", "FundMortgageType",
-            "FundStatus", "FundType", "FundTypeEn", "FutureAccType", "FuturePwdFlag", "FutureType", "Gender", "GiveUpDataSource",
-            "HandlePositionAlgoID", "HandleTradingAccountAlgoID", "HasBoard", "HasTrustee", "HedgeFlag", "HedgeFlagEn",
-            "IdCardType", "IncludeCloseProfit", "InitSettlement", "InstLifePhase", "InstMarginCalID", "InstStatusEnterReason",
-            "InstitutionType", "InstrumentClass", "InstrumentStatus", "InvestTradingRight", "InvestorRange", "InvestorRiskStatus",
-            "InvestorSettlementParamID", "InvestorType", "LanguageType", "LastFragment", "LimitUseType", "LinkStatus", "LoginMode",
-            "ManageStatus", "MarginPriceType", "MarginRateType", "MarginType", "MarketMakeState", "MatchType", "MaxMarginSideAlgorithm",
-            "MoneyAccountStatus", "MonthBillTradeSum", "MortgageFundUseRange", "MortgageType", "NoteType", "NotifyClass", "OTCTradeType",
-            "OTPStatus", "OTPType", "OffsetFlag", "OffsetType", "OffsetFlagEn", "OpenLimitControlLevel", "OpenOrDestroy", "OptSelfCloseFlag",
-            "OptionRoyaltyPriceType", "OptionsType", "OrderActionStatus", "OrderCancelAlg", "OrderFreqControlLevel", "OrderPriceType", "OrderSource",
-            "OrderStatus", "OrderSubmitStatus", "OrderType", "OrgSystemID", "OrganLevel", "OrganStatus",
-            "OrganType", "ParkedOrderStatus", "PassWordKeyType", "PasswordType", "PersonType", "PortfType", "Portfolio", "PositionDate",
-            "PositionDateType", "PositionDirection", "PositionType", "PriceSource", "ProcessStatus", "ProdChangeFlag", "ProductClass", "ProductLifePhase",
-            "ProductStatus", "ProductType", "PromptType", "PropertyInvestorRange", "ProtocolID", "PublishStatus", "PwdFlag",
-            "PwdRcdSrc", "QueryInvestorRange", "QuestionType", "RCAMSCombinationType", "RateInvestorRange", "RateType",
-            "RatioAttr", "Reason", "ReportStatus", "ReqFlag", "ReqRspType", "ResFlag", "ReserveOpenAccStas", "ResponseValue", "ReturnLevel",
-            "ReturnPattern", "ReturnStandard", "ReturnStyle", "RightParamType", "RiskLevel", "RiskNotifyMethod", "RiskNotifyStatus",
-            "RiskUserEvent", "SHFEUploadFileName", "SaveStatus", "SecuAccType", "SendMethod", "SendType", "SettArchiveStatus", "SettleManagerGroup", "SettleManagerLevel",
-            "SettleManagerType", "SettlementBillType", "SettlementStatus", "SettlementStyle", "Sex", "SpecPosiType",
-            "SpecProductType", "SpecialCreateRule", "SponsorType", "StandardStatus", "StartMode", "StatMode", "StrikeMode", "StrikeOffsetType", "StrikeType",
-            "SwapSourceType", "SyncDataStatus", "SyncDeltaStatus", "SyncFlag", "SyncMode", "SyncType", "SysOperMode", "SysOperType",
-            "SysSettlementStatus", "SystemParamID", "SystemStatus", "SystemType", "TemplateType", "TimeCondition", "TimeRange",
-            "TradeParamID", "TradeSource", "TradeSumStatMode", "TradeType", "TraderConnectStatus", "TradingRight", "TradingRole", "TradingType",
-            "TransferDirection", "TransferStatus", "TransferType", "TransferValidFlag", "TxnEndFlag", "UOAAssetmgrType", "UOAAutoSend", "UpdateFlag",
-            "UsedStatus", "UserEventType", "UserRange", "UserRightType", "UserType", "ValueMethod", "VirBankAccType", "VirDealStatus", "VirTradeStatus", "VirementAvailAbility",
-            "VirementStatus", "VirementTradeCode", "VolumeCondition", "WeakPasswordSource", "WithDrawParamID", "YesNoIndicator",
-        ]
-    else:
+    # 提取枚举类名
+    enums_file = project_root / 'src' / 'enums.py'
+    if enums_file.exists():
         enum_names = extract_enum_names(enums_file)
-        print(f"从 {enums_file} 提取到 {len(enum_names)} 个枚举类")
-
-    # 从 types.py 提取 TypedDict 类名
-    types_file = base_dir / 'src/types.py'
-    if not types_file.exists():
-        print(f"警告: 找不到 {types_file}，TypedDict 列表将为空", file=sys.stderr)
-        type_names = []
+        print(f"[提取] 从 enums.py 提取到 {len(enum_names)} 个枚举类")
     else:
+        print(f"[警告] 找不到 {enums_file}，使用默认枚举列表")
+        enum_names = []
+
+    # 提取类型类名
+    types_file = project_root / 'src' / 'types' / '__init__.py'
+    if types_file.exists():
         type_names = extract_type_names(types_file)
-        print(f"从 {types_file} 提取到 {len(type_names)} 个 TypedDict")
+        print(f"[提取] 从 types/__init__.py 提取到 {len(type_names)} 个类型类")
+    else:
+        print(f"[警告] 找不到 {types_file}，类型列表将为空")
+        type_names = []
 
     # 格式化列表
     enum_names_str = format_list(enum_names)
     type_names_str = format_list(type_names)
 
-    # 根据绑定类型选择模板
-    if binding_type == 'nanobind':
-        template = MAIN_INIT_TEMPLATE_NANOBIND
-        print(f"[信息] 使用 nanobind 主入口模板")
-    else:
-        template = MAIN_INIT_TEMPLATE_PYTHON_C_API
-        print(f"[信息] 使用 Python C API 主入口模板")
-
     # 使用模板生成内容
-    content = template.format(
+    content = MAIN_INIT_TEMPLATE_PYTHON_C_API.format(
         module_name=module_name,
-        version=ctp_version,
-        platform=ctp_platform,
-        version_type=version_type_display,
-        pcctp_version=pcctp_version,
-        ctp_version=ctp_version,
-        fix_version=fix_version,
-        ctp_platform=ctp_platform,
-        enum_names=enum_names_str,
+        version=versions['ctp_version'],
+        platform=target_platform,
+        version_type='PC',
+        pcctp_version=versions['pcctp_version'],
+        ctp_version=versions['ctp_version'],
+        fix_version=versions['fix_version'],
+        ctp_platform=target_platform,
+        enum_names=enum_names_str if enum_names_str else '    # (无枚举类)',
         type_count=len(type_names),
-        type_names=type_names_str,
+        type_names=type_names_str if type_names_str else '    # (无类型类)',
     )
 
-    output_file = os.path.join(ctp_base_dir, '__init__.py')
-    with open(output_file, 'w', encoding='utf-8') as f:
-        f.write(content)
+    try:
+        output_file.write_text(content, encoding='utf-8')
+        print(f"[生成] {output_file.relative_to(project_root)}")
+        return True
+    except Exception as e:
+        print(f"[错误] 生成文件失败: {e}")
+        return False
 
-    print(f"生成 {output_file}")
-    return 0
+
+# =============================================================================
+# 主函数
+# =============================================================================
+
+def run_prepare_stage(project_root: Path, target_platform: str) -> bool:
+    """执行编译前准备阶段
+
+    1. 复制 src 下的 Python 文件到 PcCTP 目录
+    2. 复制类型存根文件
+    3. 生成平台特定的 __init__.py 文件
+    4. 生成主入口的 __init__.py 文件
+
+    Args:
+        project_root: 项目根目录
+        target_platform: 目标平台
+
+    Returns:
+        bool: 是否成功
+    """
+    print("\n" + "=" * 60)
+    print("编译前准备阶段")
+    print("=" * 60)
+
+    # 读取版本号
+    versions = get_all_versions(project_root)
+    print(f"[版本] PcCTP: {versions['pcctp_version']}")
+    print(f"[版本] CTP: {versions['ctp_version']}")
+    print(f"[版本] FIX: {versions['fix_version']}")
+
+    # 复制 Python 文件
+    if not copy_python_files(project_root, target_platform):
+        return False
+
+    # 复制类型存根文件
+    if not copy_type_stub_files(project_root):
+        return False
+
+    # 生成平台特定的 __init__.py
+    if not generate_platform_init(project_root, target_platform, versions):
+        return False
+
+    # 生成主入口的 __init__.py
+    if not generate_main_init(project_root, target_platform, versions):
+        return False
+
+    return True
 
 
-def generate_init_file():
-    """根据环境变量决定生成哪种 __init__.py 文件"""
-    generate_main = os.environ.get('GENERATE_MAIN_INIT', '0')
+def run_finalize_stage(project_root: Path, target_platform: str) -> bool:
+    """执行编译后整理阶段
 
-    if generate_main == '1':
-        # 生成主入口文件
-        return generate_main_init()
+    重新生成 __init__.py 文件以确保内容正确
+
+    Args:
+        project_root: 项目根目录
+        target_platform: 目标平台
+
+    Returns:
+        bool: 是否成功
+    """
+    print("\n" + "=" * 60)
+    print("编译后整理阶段")
+    print("=" * 60)
+
+    # 读取版本号
+    versions = get_all_versions(project_root)
+
+    # 重新生成平台特定的 __init__.py
+    if not generate_platform_init(project_root, target_platform, versions):
+        return False
+
+    # 重新生成主入口的 __init__.py
+    if not generate_main_init(project_root, target_platform, versions):
+        return False
+
+    return True
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description='PcCTP Python 文件生成脚本',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=__doc__
+    )
+    parser.add_argument(
+        '--platform',
+        required=True,
+        choices=['win64', 'linux'],
+        help='目标平台'
+    )
+    parser.add_argument(
+        '--stage',
+        default='all',
+        choices=['prepare', 'finalize', 'all'],
+        help='执行阶段 (默认: all)'
+    )
+    parser.add_argument(
+        '--use-nanobind',
+        default='OFF',
+        help='是否使用 nanobind 绑定层（默认：OFF）'
+    )
+
+    args = parser.parse_args()
+
+    # 获取项目根目录
+    project_root = Path(__file__).parent.parent
+
+    print(f"[信息] 目标平台: {args.platform}")
+    print(f"[信息] 执行阶段: {args.stage}")
+
+    # 根据阶段执行相应操作
+    if args.stage == 'prepare':
+        success = run_prepare_stage(project_root, args.platform)
+    elif args.stage == 'finalize':
+        success = run_finalize_stage(project_root, args.platform)
+    elif args.stage == 'all':
+        success = run_prepare_stage(project_root, args.platform)
+        if success:
+            success = run_finalize_stage(project_root, args.platform)
     else:
-        # 生成平台特定文件
-        return generate_platform_init()
+        print(f"[错误] 未知的阶段: {args.stage}")
+        return 1
+
+    if success:
+        print("\n[完成] 所有操作成功")
+        return 0
+    else:
+        print("\n[错误] 操作失败")
+        return 1
 
 
 if __name__ == '__main__':
-    sys.exit(generate_init_file())
+    sys.exit(main())

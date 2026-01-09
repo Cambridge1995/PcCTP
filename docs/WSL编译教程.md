@@ -109,7 +109,7 @@ python --version
 
 ```bash
 # 创建名为 pcctp 的环境，指定Python版本
-conda create -n pcctp python=3.10 -y
+conda create -n pcctp python=3.13 -y
 
 # 激活环境
 conda activate pcctp
@@ -203,7 +203,7 @@ cd PcCTP
 ls -la ctp/PC/linux/
 
 # 应该包含以下文件：
-# - libthostmduserapi_se.so (行情API)
+# - thostmduserapi_se.so (行情API)
 ```
 
 **如果缺少Linux版本的CTP库文件，需要从SimNow官网下载：**
@@ -419,33 +419,3 @@ echo "==================================="
 chmod +x setup_wsl_conda.sh
 ./setup_wsl_conda.sh
 ```
-
----
-
-## 验证编译结果
-
-编译成功后，验证输出：
-
-```bash
-# 查看输出目录
-ls -la PcCTP/linux/
-
-# 应该包含：
-# - PcCTP.cpython-3xx-x86_64-linux-gnu.so (编译的模块)
-# - libthostmduserapi_se.so (CTP API库)
-# - __init__.py (Python包初始化文件)
-# - enums.py, types.py, interface.py (辅助模块)
-```
-
----
-
-## 联系支持
-
-如遇到其他问题，请提供以下信息：
-
-1. WSL版本: `wsl --list --verbose`
-2. Ubuntu版本: `lsb_release -a`
-3. GCC版本: `gcc --version`
-4. CMake版本: `cmake --version`
-5. Python版本: `python3 --version`
-6. 完整错误信息

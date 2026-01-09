@@ -1,5 +1,5 @@
 # PcCTP 傻瓜式教程
-
+(注:由于无win32机器,在win64上无论如何修改,都无法成功执行,无法进行测试,因此不再支持win32版本,仅支持win64与linux版本)
 ## 目录
 
 - [项目结构](#1. 项目结构)
@@ -182,9 +182,44 @@ python simple_test.py
 
 **Windows 32位编译**：
 
-- 选项1：Windows 32位系统 + 32位 Python + 32位编译器
-- 选项2：Windows 64位系统 + 64位 Python + Visual Studio（使用 `-A Win32` 参数）
+> ⚠️ **重要提示**：推荐使用64位Python和64位模块，除非您有特殊的32位需求（如32位硬件驱动、遗留系统兼容等）。
+
+32位编译有两种方法：
+
+**方法1：使用32位原生工具链（推荐）**
+
+- Windows 10/11 (64位)
+- Visual Studio 2017/2019/2022（含 C++ 构建工具）
+- **32位Python** (推荐: `conda create -n py32 python=3.10`)
+- 在 **x86 Native Tools Command Prompt** 中编译（不是x64！）
+
+```bash
+# 1. 打开 x86 Native Tools Command Prompt
+# 2. 激活32位Python环境
+conda activate py32
+
+# 3. 编译
+python build.py --platform win32 --generator "NMake Makefiles"
+```
+
+详细说明见：[32位支持完整指南](docs/32位支持完整指南.md)
+
+**方法2：使用64位工具链交叉编译**
+
+- Windows 10/11 (64位)
+- Visual Studio 2017/2019/2022
+- 32位Python
+- 指定 `-A Win32` 参数
+
+```bash
+conda activate py32
+python build.py --platform win32
+```
+
+**注意**：
 - `requirement.txt` 中配备的依赖库
+- NumPy需要32位版本（32位Python会自动安装）
+- 需要安装 [Microsoft Visual C++ Redistributable](https://aka.ms/vs/17/release/vc_redist.x86.exe) (x86版本)
 
 ### 3.2 Linux 环境
 
