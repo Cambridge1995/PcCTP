@@ -17,10 +17,8 @@
   - [Linux](#3.2 Linux 环境)
 - [编译](#4. 编译)
   - [一键编译（推荐）](#4.1 一键编译（推荐）)
-  - [nanobind参数](#4.2 --nanobind)
   - [platfrom](#4.3 --platform)
     - [win64](#4.3.1 win64)
-    - [win32](#4.3.2 win32)
     - [linux](#4.3.3 linux)
   - [更多选项](#4.4 更多选项)
 - [输出目录](#5. 输出目录)
@@ -46,11 +44,6 @@ PcCTP/
 │	├── enums.py
 │	├── types.py
 │	├── interface.py    # nanobind版可以删除它，Python C API版本不能删！
-│	├── win32/          # Windows 32位版本
-│	│   ├── __init__.py
-│	│   ├── PcCTP.pyi    # 存根文件，不建议删除，删除后IDE会提示找不到PcCTP位置
-│	│   ├── PcCTP.cp313-win32.pyd
-│	│   └── ...
 │	├── win64/          # Windows 64位版本
 │	│   ├── __init__.py
 │	│   ├── PcCTP.pyi    # 存根文件，不建议删除，删除后IDE会提示找不到PcCTP位置
@@ -87,7 +80,7 @@ PcCTP/
 
 ## 2. 快速开始，开箱即用
 
-如果想省去编译构建环境、pip工具库等复杂操作，希望开箱即用的人，可以直接下载本项目后，将[PcCTP](PcCTP)文件夹移入自己的项目中，[PcCTP](PcCTP)是一个可迁移的完整的python包，可以根据系统环境，自动选择使用对应版本，目前支持 `win64` ， `win32` ， `linux` 三个版本，不必担心系统差异导致的问题。
+如果想省去编译构建环境、pip工具库等复杂操作，希望开箱即用的人，可以直接下载本项目后，将[PcCTP](PcCTP)文件夹移入自己的项目中，[PcCTP](PcCTP)是一个可迁移的完整的python包，可以根据系统环境，自动选择使用对应版本，目前支持 `win64` ，  `linux` 三个版本，不必担心系统差异导致的问题。
 
 如果不介意构建自己的环境，想自己编译，则从 [3. 编译环境要求](#3. 编译环境要求) 开始阅读。
 
@@ -180,46 +173,6 @@ python simple_test.py
 - CMake 3.15+
 - `requirement.txt` 中配备的依赖库
 
-**Windows 32位编译**：
-
-> ⚠️ **重要提示**：推荐使用64位Python和64位模块，除非您有特殊的32位需求（如32位硬件驱动、遗留系统兼容等）。
-
-32位编译有两种方法：
-
-**方法1：使用32位原生工具链（推荐）**
-
-- Windows 10/11 (64位)
-- Visual Studio 2017/2019/2022（含 C++ 构建工具）
-- **32位Python** (推荐: `conda create -n py32 python=3.10`)
-- 在 **x86 Native Tools Command Prompt** 中编译（不是x64！）
-
-```bash
-# 1. 打开 x86 Native Tools Command Prompt
-# 2. 激活32位Python环境
-conda activate py32
-
-# 3. 编译
-python build.py --platform win32 --generator "NMake Makefiles"
-```
-
-详细说明见：[32位支持完整指南](docs/32位支持完整指南.md)
-
-**方法2：使用64位工具链交叉编译**
-
-- Windows 10/11 (64位)
-- Visual Studio 2017/2019/2022
-- 32位Python
-- 指定 `-A Win32` 参数
-
-```bash
-conda activate py32
-python build.py --platform win32
-```
-
-**注意**：
-- `requirement.txt` 中配备的依赖库
-- NumPy需要32位版本（32位Python会自动安装）
-- 需要安装 [Microsoft Visual C++ Redistributable](https://aka.ms/vs/17/release/vc_redist.x86.exe) (x86版本)
 
 ### 3.2 Linux 环境
 
@@ -247,75 +200,15 @@ python build.py --platform win32
 python build.py
 ```
 
-完整的编译命令为：
+### 4.2 `--platform`
 
-```bash
-python build.py --platform <平台> --nanobind
-```
-
-**但一般用不到完整的编译命令**，因为在编译文件中已经配备好了自动最优选择，使用最简单的编译命令就行。
-
-下面解释参数含义：
-
-### 4.2 `--nanobind`
-
-**目前支持使用两种bind库进行绑定编译：** 1.  `nanobind`   2. `Python C API`
-
-**使用方法：** 使用 `--nanobind` 参数可以选择 `nanobind` 库进行构建，若是不加参数，则默认编译 `Python C API` 版本。
-
-**使用两种方式的原因：** 刚开始打算省事，跟AI沟通后，发现 `nanobind` 库算是众多绑定库中运行速度比较快的，编码方式是C++，比较简洁，开发难度低。所以就选用了 `nanobind` ，结果在运行时，出现退出码为  `-1073741819 (0xC0000005)` 的诡异情况，虽然影响不大，但我这人有强迫症，非要解决，折腾了几天，解决不了，本能的以为是 `nanobind` 库自带的问题，就彻底重构，改用了 `Python C API` 。
-
-结果没想到 `Python C API` 也出现同样的问题，就一点一点的排查，最后发现与 `nanobind` 库无关，而是我自定义的 `zero_copy_uitls.h` 工具有bug，所以又回头修改了 `nanobind` 版。
-
-也就留下了两个版本。
-
-**区别：** 至于二者有何区别，`Python C API` 编码更接近C，编程量大些，代码量更多、更复杂； `nanobind` 更接近C++，语法更简洁，代码量更少；其他区别我就不谈了，毕竟是量化项目，估计最关心的还是执行效率问题，AI分析的理论对比图如下：
-
-性能差异量化（高频回调场景）
-
-对于深度行情回调（最关键的性能路径）：
-
-| 操作         | nanobind 开销 | Python C API 开销 |
-| ------------ | ------------- | ----------------- |
-| GIL 获取     | ~20-30 ns     | ~10-15 ns         |
-| 属性方法查找 | ~50-100 ns    | ~20-30 ns         |
-| 字典构建     | ~200-300 ns   | ~150-200 ns       |
-| 回调调用     | ~100-150 ns   | ~50-80 ns         |
-| 单次回调总计 | ~370-580 ns   | ~230-325 ns       |
-
-Python C API 版本大约快 30-50%（在高频回调场景下）
-
-**总结：**
-
-| 维度       | nanobind               | Python C API       |
-| ---------- | ---------------------- | ------------------ |
-| 执行速度   | 较慢（抽象开销）       | 更快（直接调用）   |
-| 开发效率   | 高（现代 C++）         | 低（手动管理）     |
-| 代码可读性 | 好（简洁）             | 差（冗长）         |
-| 维护性     | 好（类型安全）         | 差（易错）         |
-| 内存安全   | 好（自动 RAII）        | 差（手动管理）     |
-| 适合场景   | 通用应用、开发效率优先 | 高频交易、性能关键 |
-
-**个人见解：** 以上是AI分析，但事实上是否真有差距，无法得知，本人不擅长测试，对测试类的编写很头疼，就彻底放弃了，只要能跑通代码就行，至于真实情况是否如AI分析的一样，就不得而知了。但就我本人看来，纳秒级别的差别其实不影响交易，国内期货的推送都是毫秒级别，一秒2~4次，纳秒级的延迟差了两个量级，影响简直微乎其微。
-
-**选择建议：** 1. 如果只是想移植到自己项目，不想对接口进行二次开发，且追求速度，则选择`Python C API` 的编译版本。
-
-​					2. 如果希望进行二次开发，只是想省去从头到尾构建的时间，摆脱对本项目的依赖，则使用 `nanobind` 的编译版本，其代码简洁易懂，方便后续二次开发。
-
-**注意：** *考虑到交易追求速度，为了节省作者时间， `Python C API`的版本维护会比 `nanobind` 的版本维护更勤。*
-
-
-
-### 4.3 `--platform`
-
- **编译平台：** 现在支持三个平台`win64`、`win32`、`linux`。指定平台编译：
+ **编译平台：** 现在支持两个平台`win64`、`linux`。指定平台编译：
 
 ```bash
 # Windows 64位版本
 python build.py --platform win64
 
-# Windows 32位版本
-python build.py --platform win32
+
 
 # Linux 版本
 python build.py --platform linux 
@@ -323,7 +216,7 @@ python build.py --platform linux
 
 **注意：** 一般情况下，用不到该参数，因为已经配置了可以根据系统环境，自动选择编译版本。
 
-#### 4.3.1 `win64`
+#### 4.2.1 `win64`
 
 ```bash
 # 编译（自动识别编译器，并编译64位）
@@ -332,33 +225,8 @@ python build.py
 python build.py --platform win64
 ```
 
-#### 4.3.2 `win32`
 
-编译 `win32` 版本首先必须使用32位的python编译器，请提前下载好32位编译器，以 `conda `进行举例：
-
-```bash
-# 1. 创建 32 位 Python 3.7 环境
-conda create -n py32 --platform win-32 python=3.10.4
-
-# 2. 激活环境
-conda activate py32
-
-# 3. 验证是否是 32 位
-python -c "import struct; print(struct.calcsize('P') * 8, '位')"
-```
-
-编译前激活 `py32` 环境，然后再执行编译：
-
-```bash
-# 激活环境
-conda activate py32
-# 编译（自动识别编译器，并编译32位）
-python build.py
-# 也可以指定参数（但没卵用，我都给你配好了，傻瓜式操作不做，非要脱裤子放屁干嘛）
-python build.py --platform win32
-```
-
-#### 4.3.3 `linux`
+#### 4.2.2 `linux`
 
 ```bash
 # 编译（自动识别编译器，并编译linux版本）
@@ -369,7 +237,7 @@ python build.py --platform linux
 
 linux需要配备linux相关环境，详情见文档： [WSL编译教程.md](docs/WSL%E7%BC%96%E8%AF%91%E6%95%99%E7%A8%8B.md)
 
-### 4.4 更多选项
+### 4.3 更多选项
 
 ```bash
 # Release 模式编译（默认）
@@ -383,9 +251,6 @@ python build.py --platform win64 --nanobind
 
 # 清理后重新编译
 python build.py --platform win64 --clean
-
-# 指定 CMake 生成器
-python build.py --platform win32 --generator "Visual Studio 17 2022"
 
 # 查看帮助
 python build.py --help
@@ -407,11 +272,6 @@ PcCTP/
 ├── enums.py
 ├── types.py
 ├── interface.py
-├── win32/          # Windows 32位版本
-│   ├── __init__.py
-│   ├── PcCTP.pyi
-│   ├── PcCTP.cp313-win32.pyd
-│   └── ...
 ├── win64/          # Windows 64位版本
 │   ├── __init__.py
 │   ├── PcCTP.pyi
@@ -424,7 +284,6 @@ PcCTP/
 │   └── ...
 │
 build/              # 构建缓存目录（可删除）
-├── win32/          # win32 构建缓存
 ├── win64/          # win64 构建缓存
 └── linux/          # linux 构建缓存
 ```
@@ -437,23 +296,14 @@ build/              # 构建缓存目录（可删除）
 
 ## 6. 常见问题
 
-### Q1: 在 Windows 64位系统上编译 32位版本失败？
-**A**: 确保安装了 Visual Studio 的 C++ 构建工具，创建且激活了32位的python环境：
-
-```bash
-conda create -n py32 --platform win-32 python=3.10.4
-conda activate py32
-python build.py
-```
-
-### Q2: Linux 编译提示找不到 Python.h？
+### Q1: Linux 编译提示找不到 Python.h？
 **A**: 安装 Python 开发头文件：
 
 ```bash
 sudo apt-get install python3-dev
 ```
 
-### Q3: 如何清理构建缓存？
+### Q2: 如何清理构建缓存？
 **A**: 使用 `--clean` 参数：
 
 ```bash
