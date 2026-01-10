@@ -190,7 +190,6 @@ from PcCTP.types import *
 # 通过系统类型导入对应的接口
 if env == 'win64':  # windows64位
     from PcCTP.win64 import *
-    print('导入PcCTP')
 elif env == 'linux':  # linux
     from PcCTP.linux import *
 else:  # 其他系统 暂不支持,如：macOS

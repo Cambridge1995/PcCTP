@@ -18,8 +18,6 @@ from PcCTP.types.utils import env
 # 通过系统类型导入对应的接口
 if env == 'win64':  # windows64位
     from PcCTP.win64 import pycapsule_new, pycapsule_check_exact, pycapsule_get_pointer
-elif env == 'win32':  # windows32位
-    from PcCTP.win32 import pycapsule_new, pycapsule_check_exact, pycapsule_get_pointer
 elif env == 'linux':  # linux
     from PcCTP.linux import pycapsule_new, pycapsule_check_exact, pycapsule_get_pointer
 else:  # 其他系统 暂不支持,如：macOS
